@@ -15,6 +15,7 @@ public static class DependencyInjection
         services.AddScoped<IGetSubscriptionHandler, GetSubscriptionHandler>();
         services.AddScoped<IUpdateSubscriptionHandler, UpdateSubscriptionHandler>();
         services.AddScoped<IDeleteSubscriptionHandler, DeleteSubscriptionHandler>();
+        services.AddScoped<Summaries.IGetSummaryHandler, Summaries.GetSummaryHandler>();
         return services;
     }
 }

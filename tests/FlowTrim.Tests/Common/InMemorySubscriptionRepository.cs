@@ -32,6 +32,12 @@ public sealed class InMemorySubscriptionRepository : ISubscriptionRepository
 
     public Task<int> CountAsync(CancellationToken cancellationToken) => Task.FromResult(Items.Count);
 
+    public Task<IReadOnlyList<Subscription>> ListActiveAsync(CancellationToken cancellationToken)
+    {
+        IReadOnlyList<Subscription> active = Items.Where(s => s.Status == SubscriptionStatus.Active).ToList();
+        return Task.FromResult(active);
+    }
+
     public Task UpdateAsync(Subscription subscription, CancellationToken cancellationToken)
     {
         // La entidad ya fue mutada en memoria (misma instancia devuelta por GetByIdAsync).

@@ -2,6 +2,7 @@ using FlowTrim.Application;
 using FlowTrim.Application.Abstractions;
 using FlowTrim.Application.Health;
 using FlowTrim.Application.Subscriptions;
+using FlowTrim.Application.Summaries;
 using FlowTrim.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -113,5 +114,15 @@ app.MapDelete("/api/subscriptions/{id:guid}", async (
         : Results.Problem(statusCode: StatusCodes.Status404NotFound);
 })
 .WithName("DeleteSubscription");
+
+// Resumen financiero por moneda (equivalente mensual y proyección anual de las suscripciones activas).
+app.MapGet("/api/summary", async (
+    IGetSummaryHandler handler,
+    CancellationToken cancellationToken) =>
+{
+    var summary = await handler.HandleAsync(cancellationToken);
+    return Results.Ok(summary);
+})
+.WithName("GetSummary");
 
 app.Run();

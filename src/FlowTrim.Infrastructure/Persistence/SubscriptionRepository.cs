@@ -31,6 +31,11 @@ internal sealed class SubscriptionRepository : ISubscriptionRepository
     public async Task<int> CountAsync(CancellationToken cancellationToken) =>
         await _dbContext.Subscriptions.CountAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<Subscription>> ListActiveAsync(CancellationToken cancellationToken) =>
+        await _dbContext.Subscriptions
+            .Where(s => s.Status == SubscriptionStatus.Active)
+            .ToListAsync(cancellationToken);
+
     public async Task UpdateAsync(Subscription subscription, CancellationToken cancellationToken)
     {
         _dbContext.Subscriptions.Update(subscription);
