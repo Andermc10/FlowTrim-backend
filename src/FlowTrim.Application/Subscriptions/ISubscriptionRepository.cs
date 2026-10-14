@@ -17,6 +17,9 @@ public interface ISubscriptionRepository
     /// <summary>Cuenta el total de suscripciones (para la metadata de paginación).</summary>
     Task<int> CountAsync(CancellationToken cancellationToken);
 
+    /// <summary>Devuelve todas las suscripciones activas (para el resumen financiero).</summary>
+    Task<IReadOnlyList<Subscription>> ListActiveAsync(CancellationToken cancellationToken);
+
     /// <summary>Persiste los cambios de una suscripción existente.</summary>
     Task UpdateAsync(Subscription subscription, CancellationToken cancellationToken);
 

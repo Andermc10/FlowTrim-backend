@@ -181,6 +181,17 @@ public sealed class Subscription
         return (name, category, amount, currency);
     }
 
+    /// <summary>
+    /// Costo mensual equivalente según el ciclo de cobro: mensual → importe; anual → importe / 12
+    /// (redondeado a 2 decimales). No suma ni convierte monedas; opera sobre un único importe.
+    /// </summary>
+    public decimal GetMonthlyEquivalent() => BillingCycle switch
+    {
+        BillingCycle.Monthly => Amount,
+        BillingCycle.Yearly => Math.Round(Amount / 12m, 2, MidpointRounding.AwayFromZero),
+        _ => throw new InvalidOperationException($"Unsupported billing cycle: {BillingCycle}")
+    };
+
     // Valida que la moneda tenga exactamente 3 letras A-Z (solo formato, sin lista ISO real: MVP mono-moneda).
     private static bool IsValidCurrencyFormat(string currency)
     {
