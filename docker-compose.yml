@@ -1,0 +1,27 @@
+# Base de datos PostgreSQL local para desarrollo de FlowTrim.
+# Las credenciales se leen del archivo .env (no versionado). Ver .env.example.
+services:
+  postgres:
+    image: postgres:17
+    container_name: flowtrim-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      # Puerto del host configurable (por defecto 5432) mapeado al puerto interno de Postgres.
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # Volumen con nombre para que los datos persistan entre reinicios del contenedor.
+      - flowtrim_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # Marca el contenedor como "healthy" solo cuando Postgres acepta conexiones.
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  flowtrim_pgdata:
+    name: flowtrim_pgdata
