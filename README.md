@@ -120,12 +120,17 @@ review the generated SQL, then run the command above.
 
 ## Subscriptions API
 
-`POST /api/subscriptions` creates a subscription.
+| Method | Route | Success | Errors |
+|---|---|---|---|
+| POST | `/api/subscriptions` | `201` + resource (`Location` header) | `400` |
+| GET | `/api/subscriptions?page=&pageSize=` | `200` paged list | — |
+| GET | `/api/subscriptions/{id}` | `200` | `404` |
+| PUT | `/api/subscriptions/{id}` | `200` | `400`, `404` |
+| DELETE | `/api/subscriptions/{id}` | `204` | `404` |
 
-- `201 Created` with the created resource (and a `Location` header) on success.
-- `400 Bad Request` (`ValidationProblemDetails`) when input is invalid; nothing is persisted.
-
-Listing, detail, edit and delete arrive in HU-02.
+The list is ordered by next billing date then name; `page` defaults to 1 and `pageSize` to 20
+(max 100). `PUT` is a full replace of editable fields (including `status`). Invalid input returns
+`400` (`ValidationProblemDetails`) and nothing is persisted.
 
 ## Notes
 
