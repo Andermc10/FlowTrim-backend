@@ -58,4 +58,60 @@ app.MapPost("/api/subscriptions", async (
 })
 .WithName("CreateSubscription");
 
+// Lista paginada de suscripciones (orden: próxima fecha de cobro, luego nombre).
+app.MapGet("/api/subscriptions", async (
+    IListSubscriptionsHandler handler,
+    CancellationToken cancellationToken,
+    int? page,
+    int? pageSize) =>
+{
+    var result = await handler.HandleAsync(page ?? 1, pageSize ?? ListSubscriptionsHandler.DefaultPageSize, cancellationToken);
+    return Results.Ok(result);
+})
+.WithName("ListSubscriptions");
+
+// Detalle de una suscripción.
+app.MapGet("/api/subscriptions/{id:guid}", async (
+    Guid id,
+    IGetSubscriptionHandler handler,
+    CancellationToken cancellationToken) =>
+{
+    var subscription = await handler.HandleAsync(id, cancellationToken);
+    return subscription is null
+        ? Results.Problem(statusCode: StatusCodes.Status404NotFound)
+        : Results.Ok(subscription);
+})
+.WithName("GetSubscription");
+
+// Actualización completa de una suscripción.
+app.MapPut("/api/subscriptions/{id:guid}", async (
+    Guid id,
+    UpdateSubscriptionRequest request,
+    IUpdateSubscriptionHandler handler,
+    CancellationToken cancellationToken) =>
+{
+    UpdateSubscriptionResult result = await handler.HandleAsync(id, request, cancellationToken);
+
+    return result.Kind switch
+    {
+        UpdateSubscriptionResult.ResultKind.NotFound => Results.Problem(statusCode: StatusCodes.Status404NotFound),
+        UpdateSubscriptionResult.ResultKind.Invalid => Results.ValidationProblem(result.Errors),
+        _ => Results.Ok(result.Value),
+    };
+})
+.WithName("UpdateSubscription");
+
+// Eliminación de una suscripción.
+app.MapDelete("/api/subscriptions/{id:guid}", async (
+    Guid id,
+    IDeleteSubscriptionHandler handler,
+    CancellationToken cancellationToken) =>
+{
+    bool deleted = await handler.HandleAsync(id, cancellationToken);
+    return deleted
+        ? Results.NoContent()
+        : Results.Problem(statusCode: StatusCodes.Status404NotFound);
+})
+.WithName("DeleteSubscription");
+
 app.Run();

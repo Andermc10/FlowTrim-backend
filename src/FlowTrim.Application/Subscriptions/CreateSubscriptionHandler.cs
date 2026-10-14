@@ -70,7 +70,7 @@ public sealed class CreateSubscriptionHandler : ICreateSubscriptionHandler
                 _timeProvider);
 
             await _repository.AddAsync(subscription, cancellationToken);
-            return CreateSubscriptionResult.Success(Map(subscription));
+            return CreateSubscriptionResult.Success(SubscriptionMapper.ToResponse(subscription));
         }
         catch (DomainValidationException exception)
         {
@@ -80,16 +80,4 @@ public sealed class CreateSubscriptionHandler : ICreateSubscriptionHandler
             });
         }
     }
-
-    private static SubscriptionResponse Map(Subscription subscription) => new(
-        subscription.Id,
-        subscription.Name,
-        subscription.Category,
-        subscription.Amount,
-        subscription.Currency,
-        subscription.BillingCycle.ToString(),
-        subscription.NextBillingDate,
-        subscription.Status.ToString(),
-        subscription.CreatedAt,
-        subscription.UpdatedAt);
 }

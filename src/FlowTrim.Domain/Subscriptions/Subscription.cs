@@ -72,6 +72,64 @@ public sealed class Subscription
         DateOnly nextBillingDate,
         TimeProvider timeProvider)
     {
+        var (validName, validCategory, validAmount, validCurrency) =
+            ValidateAndNormalize(name, category, amount, currency, billingCycle);
+
+        var now = timeProvider.GetUtcNow();
+        return new Subscription(
+            Guid.NewGuid(),
+            validName,
+            validCategory,
+            validAmount,
+            validCurrency,
+            billingCycle,
+            nextBillingDate,
+            SubscriptionStatus.Active,
+            now,
+            now);
+    }
+
+    /// <summary>
+    /// Actualiza los campos editables aplicando las mismas invariantes que <see cref="Create"/> y
+    /// refresca <see cref="UpdatedAt"/>. <see cref="Id"/> y <see cref="CreatedAt"/> no cambian.
+    /// </summary>
+    public void Update(
+        string? name,
+        string? category,
+        decimal amount,
+        string? currency,
+        BillingCycle billingCycle,
+        DateOnly nextBillingDate,
+        SubscriptionStatus status,
+        TimeProvider timeProvider)
+    {
+        var (validName, validCategory, validAmount, validCurrency) =
+            ValidateAndNormalize(name, category, amount, currency, billingCycle);
+
+        if (!Enum.IsDefined(status))
+        {
+            throw new DomainValidationException("status", "Status is not supported.");
+        }
+
+        Name = validName;
+        Category = validCategory;
+        Amount = validAmount;
+        Currency = validCurrency;
+        BillingCycle = billingCycle;
+        NextBillingDate = nextBillingDate;
+        Status = status;
+        UpdatedAt = timeProvider.GetUtcNow();
+    }
+
+    // Valida y normaliza los campos comunes a creación y actualización. Lanza ante la primera invariante
+    // incumplida. Devuelve los valores ya normalizados (nombre recortado, importe redondeado, moneda en mayúsculas).
+    private static (string Name, string? Category, decimal Amount, string Currency) ValidateAndNormalize(
+        string? name,
+        string? category,
+        decimal amount,
+        string? currency,
+        BillingCycle billingCycle)
+    {
         // Nombre: requerido, recortado, no vacío y dentro del límite.
         name = name?.Trim() ?? string.Empty;
         if (name.Length == 0)
@@ -120,18 +178,7 @@ public sealed class Subscription
             throw new DomainValidationException("billingCycle", "Billing cycle is not supported.");
         }
 
-        var now = timeProvider.GetUtcNow();
-        return new Subscription(
-            Guid.NewGuid(),
-            name,
-            category,
-            amount,
-            currency,
-            billingCycle,
-            nextBillingDate,
-            SubscriptionStatus.Active,
-            now,
-            now);
+        return (name, category, amount, currency);
     }
 
     // Valida que la moneda tenga exactamente 3 letras A-Z (solo formato, sin lista ISO real: MVP mono-moneda).

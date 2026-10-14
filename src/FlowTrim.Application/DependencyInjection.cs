@@ -11,6 +11,10 @@ public static class DependencyInjection
         // Reloj inyectable para que la lógica de fechas sea testeable (nunca DateTime.UtcNow directo).
         services.AddSingleton(TimeProvider.System);
         services.AddScoped<ICreateSubscriptionHandler, CreateSubscriptionHandler>();
+        services.AddScoped<IListSubscriptionsHandler, ListSubscriptionsHandler>();
+        services.AddScoped<IGetSubscriptionHandler, GetSubscriptionHandler>();
+        services.AddScoped<IUpdateSubscriptionHandler, UpdateSubscriptionHandler>();
+        services.AddScoped<IDeleteSubscriptionHandler, DeleteSubscriptionHandler>();
         return services;
     }
 }
