@@ -9,22 +9,9 @@ public sealed class CreateSubscriptionHandlerTests
     private static readonly DateTimeOffset FixedNow = new(2026, 10, 14, 6, 30, 0, TimeSpan.Zero);
     private static readonly DateOnly SampleDate = new(2026, 11, 1);
 
-    private sealed class FakeSubscriptionRepository : ISubscriptionRepository
+    private static (CreateSubscriptionHandler Handler, InMemorySubscriptionRepository Repo) BuildHandler()
     {
-        public Subscription? Added { get; private set; }
-        public int SaveCount { get; private set; }
-
-        public Task AddAsync(Subscription subscription, CancellationToken cancellationToken)
-        {
-            Added = subscription;
-            SaveCount++;
-            return Task.CompletedTask;
-        }
-    }
-
-    private static (CreateSubscriptionHandler Handler, FakeSubscriptionRepository Repo) BuildHandler()
-    {
-        var repo = new FakeSubscriptionRepository();
+        var repo = new InMemorySubscriptionRepository();
         var handler = new CreateSubscriptionHandler(repo, new FixedTimeProvider(FixedNow));
         return (handler, repo);
     }
@@ -51,7 +38,7 @@ public sealed class CreateSubscriptionHandlerTests
         Assert.Equal("Monthly", result.Value.BillingCycle);
         Assert.Equal(FixedNow, result.Value.CreatedAt);
         Assert.Equal(1, repo.SaveCount);
-        Assert.NotNull(repo.Added);
+        Assert.Single(repo.Items);
     }
 
     [Fact]
