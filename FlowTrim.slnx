@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FlowTrim.Api/FlowTrim.Api.csproj" />
+    <Project Path="src/FlowTrim.Application/FlowTrim.Application.csproj" />
+    <Project Path="src/FlowTrim.Domain/FlowTrim.Domain.csproj" />
+    <Project Path="src/FlowTrim.Infrastructure/FlowTrim.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FlowTrim.Tests/FlowTrim.Tests.csproj" />
+  </Folder>
+</Solution>
