@@ -1,5 +1,7 @@
+using FlowTrim.Application;
 using FlowTrim.Application.Abstractions;
 using FlowTrim.Application.Health;
+using FlowTrim.Application.Subscriptions;
 using FlowTrim.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,6 +15,7 @@ var connectionString = builder.Configuration.GetConnectionString("FlowTrimDb")
         "Connection string 'FlowTrimDb' is not configured. Set it via User Secrets or the ConnectionStrings__FlowTrimDb environment variable.");
 
 builder.Services.AddInfrastructure(connectionString);
+builder.Services.AddApplication();
 
 var app = builder.Build();
 
@@ -40,5 +43,19 @@ app.MapGet("/api/health", async (IDatabaseHealthChecker databaseHealthChecker, C
         : Results.Json(response, statusCode: StatusCodes.Status503ServiceUnavailable);
 })
 .WithName("GetHealth");
+
+// Crea una suscripción. Devuelve 201 con el recurso creado, o 400 con errores por campo.
+app.MapPost("/api/subscriptions", async (
+    CreateSubscriptionRequest request,
+    ICreateSubscriptionHandler handler,
+    CancellationToken cancellationToken) =>
+{
+    CreateSubscriptionResult result = await handler.HandleAsync(request, cancellationToken);
+
+    return result.IsSuccess
+        ? Results.Created($"/api/subscriptions/{result.Value!.Id}", result.Value)
+        : Results.ValidationProblem(result.Errors);
+})
+.WithName("CreateSubscription");
 
 app.Run();

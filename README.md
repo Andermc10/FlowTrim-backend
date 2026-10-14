@@ -102,6 +102,31 @@ dotnet run --project src/FlowTrim.Api
 curl http://localhost:5080/api/health
 ```
 
+## Database migrations
+
+EF Core migrations are applied with the locally pinned `dotnet-ef` tool (restore it once with
+`dotnet tool restore`). The connection string is read from User Secrets, so pass the API as the
+startup project:
+
+```bash
+dotnet tool restore
+dotnet ef database update \
+  --project src/FlowTrim.Infrastructure \
+  --startup-project src/FlowTrim.Api
+```
+
+Migrations are committed with the code that needs them and are **never applied automatically** —
+review the generated SQL, then run the command above.
+
+## Subscriptions API
+
+`POST /api/subscriptions` creates a subscription.
+
+- `201 Created` with the created resource (and a `Location` header) on success.
+- `400 Bad Request` (`ValidationProblemDetails`) when input is invalid; nothing is persisted.
+
+Listing, detail, edit and delete arrive in HU-02.
+
 ## Notes
 
 - Known deferred issues are tracked in [`docs/TECH-DEBT.md`](docs/TECH-DEBT.md).
