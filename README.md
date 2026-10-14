@@ -58,6 +58,9 @@ docker compose down -v      # stop AND delete the data volume
 
 Data persists in the named volume `flowtrim_pgdata` across restarts.
 
+> **Port conflict:** if a local PostgreSQL already listens on `5432`, set a free port in `.env`
+> (e.g. `POSTGRES_PORT=5433`) and use that same port in the connection string below.
+
 ## Connection string and secrets
 
 The connection string is **never** committed. Provide it through:
@@ -81,6 +84,22 @@ The password in the connection string must match the one in your `.env`.
 ```bash
 dotnet build FlowTrim.slnx
 dotnet test FlowTrim.slnx
+```
+
+## Health check
+
+`GET /api/health` reports API and database availability:
+
+- `200 OK` with `{ "status": "Healthy", "api": "Healthy", "database": "Healthy" }` when the API is up and PostgreSQL is reachable.
+- `503 Service Unavailable` with `{ "status": "Unhealthy", ... }` when the database does not respond. No internal details are exposed; the error is logged server-side only.
+
+Run the API and query it:
+
+```bash
+docker compose up -d
+dotnet run --project src/FlowTrim.Api
+# in another terminal (replace the port with the one printed by the API):
+curl http://localhost:5080/api/health
 ```
 
 ## Notes
