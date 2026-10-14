@@ -1,5 +1,8 @@
 using FlowTrim.Application.Abstractions;
+using FlowTrim.Application.Subscriptions;
 using FlowTrim.Infrastructure.Health;
+using FlowTrim.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FlowTrim.Infrastructure;
@@ -14,9 +17,15 @@ public static class DependencyInjection
     /// </summary>
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, string connectionString)
     {
-        // NpgsqlDataSource gestiona el pool de conexiones; se registra como singleton.
+        // NpgsqlDataSource gestiona el pool de conexiones; lo usa el health check.
         services.AddNpgsqlDataSource(connectionString);
+
+        // DbContext EF Core con mapeo snake_case para toda la base de datos.
+        services.AddDbContext<FlowTrimDbContext>(options =>
+            options.UseNpgsql(connectionString).UseSnakeCaseNamingConvention());
+
         services.AddScoped<IDatabaseHealthChecker, NpgsqlDatabaseHealthChecker>();
+        services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
         return services;
     }
 }
