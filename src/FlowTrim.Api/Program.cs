@@ -1,12 +1,22 @@
+using FlowTrim.Application.Abstractions;
+using FlowTrim.Application.Health;
+using FlowTrim.Infrastructure;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+// Documentación OpenAPI (solo se expone en desarrollo más abajo).
 builder.Services.AddOpenApi();
+
+// La cadena de conexión nunca se versiona: viene de User Secrets (dev) o variables de entorno (deploy).
+var connectionString = builder.Configuration.GetConnectionString("FlowTrimDb")
+    ?? throw new InvalidOperationException(
+        "Connection string 'FlowTrimDb' is not configured. Set it via User Secrets or the ConnectionStrings__FlowTrimDb environment variable.");
+
+builder.Services.AddInfrastructure(connectionString);
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Configuración del pipeline HTTP.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -14,28 +24,21 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-var summaries = new[]
+// Comprueba disponibilidad de API y base de datos. Devuelve 200 si todo está bien; 503 si la BD no responde.
+// Nunca expone detalles internos del fallo.
+app.MapGet("/api/health", async (IDatabaseHealthChecker databaseHealthChecker, CancellationToken cancellationToken) =>
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+    bool databaseHealthy = await databaseHealthChecker.CanConnectAsync(cancellationToken);
 
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
+    var response = new HealthResponse(
+        Status: databaseHealthy ? HealthResponse.Healthy : HealthResponse.Unhealthy,
+        Api: HealthResponse.Healthy,
+        Database: databaseHealthy ? HealthResponse.Healthy : HealthResponse.Unhealthy);
+
+    return databaseHealthy
+        ? Results.Ok(response)
+        : Results.Json(response, statusCode: StatusCodes.Status503ServiceUnavailable);
 })
-.WithName("GetWeatherForecast");
+.WithName("GetHealth");
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
