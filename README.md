@@ -132,6 +132,10 @@ The list is ordered by next billing date then name; `page` defaults to 1 and `pa
 (max 100). `PUT` is a full replace of editable fields (including `status`). Invalid input returns
 `400` (`ValidationProblemDetails`) and nothing is persisted.
 
+`GET /api/summary` returns the financial summary **per currency** (monthly equivalent, annual
+projection, active count) over active subscriptions — currencies are never summed together; empty
+when there are none.
+
 ## Notes
 
 - Known deferred issues are tracked in [`docs/TECH-DEBT.md`](docs/TECH-DEBT.md).
