@@ -1,6 +1,7 @@
 using FlowTrim.Application;
 using FlowTrim.Application.Abstractions;
 using FlowTrim.Application.Health;
+using FlowTrim.Application.Simulations;
 using FlowTrim.Application.Subscriptions;
 using FlowTrim.Application.Summaries;
 using FlowTrim.Infrastructure;
@@ -152,5 +153,19 @@ app.MapGet("/api/summary", async (
     return Results.Ok(summary);
 })
 .WithName("GetSummary");
+
+// Simulación de cancelación y ahorro potencial. No persiste nada. 200 con el resultado, o 400 si los horizontes son inválidos.
+app.MapPost("/api/simulations", async (
+    SimulationRequest request,
+    ISimulateHandler handler,
+    CancellationToken cancellationToken) =>
+{
+    SimulationResult result = await handler.HandleAsync(request, cancellationToken);
+
+    return result.IsSuccess
+        ? Results.Ok(result.Value)
+        : Results.ValidationProblem(result.Errors);
+})
+.WithName("Simulate");
 
 app.Run();
