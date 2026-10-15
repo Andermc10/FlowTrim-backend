@@ -136,6 +136,11 @@ The list is ordered by next billing date then name; `page` defaults to 1 and `pa
 projection, active count) over active subscriptions — currencies are never summed together; empty
 when there are none.
 
+`GET /api/subscriptions/upcoming` returns active subscriptions ordered by next billing date, each
+tagged with `daysUntilCharge` and an `alertWindow` (`Overdue` / `Today` / `DueWithin3Days` /
+`DueWithin7Days` / `Later`), plus the server `referenceDate` (computed in America/Bogota, UTC−5).
+The countdown is computed server-side so the client never recomputes "today".
+
 ## Notes
 
 - Known deferred issues are tracked in [`docs/TECH-DEBT.md`](docs/TECH-DEBT.md).
