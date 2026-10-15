@@ -20,6 +20,7 @@ public static class DependencyInjection
         services.AddScoped<Simulations.ISimulateHandler, Simulations.SimulateHandler>();
         services.AddScoped<Usage.IRegisterUsageHandler, Usage.RegisterUsageHandler>();
         services.AddScoped<Usage.IListUsageHandler, Usage.ListUsageHandler>();
+        services.AddScoped<Usage.IGetCostPerUseHandler, Usage.GetCostPerUseHandler>();
         return services;
     }
 }
