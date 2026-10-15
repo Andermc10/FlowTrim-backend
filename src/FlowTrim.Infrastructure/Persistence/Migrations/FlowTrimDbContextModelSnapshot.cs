@@ -88,6 +88,52 @@ namespace FlowTrim.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("ck_subscriptions_status", "status IN ('Active', 'Inactive')");
                         });
                 });
+
+            modelBuilder.Entity("FlowTrim.Domain.Usage.UsageRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("notes");
+
+                    b.Property<Guid>("SubscriptionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subscription_id");
+
+                    b.Property<int>("UsageCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("usage_count");
+
+                    b.Property<DateOnly>("UsageDate")
+                        .HasColumnType("date")
+                        .HasColumnName("usage_date");
+
+                    b.HasKey("Id")
+                        .HasName("pk_usage_records");
+
+                    b.HasIndex("SubscriptionId")
+                        .HasDatabaseName("ix_usage_records_subscription_id");
+
+                    b.ToTable("usage_records", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_usage_records_usage_count_non_negative", "usage_count >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("FlowTrim.Domain.Usage.UsageRecord", b =>
+                {
+                    b.HasOne("FlowTrim.Domain.Subscriptions.Subscription", null)
+                        .WithMany()
+                        .HasForeignKey("SubscriptionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_usage_records_subscriptions_subscription_id");
+                });
 #pragma warning restore 612, 618
         }
     }

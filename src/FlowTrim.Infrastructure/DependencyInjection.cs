@@ -26,6 +26,7 @@ public static class DependencyInjection
 
         services.AddScoped<IDatabaseHealthChecker, NpgsqlDatabaseHealthChecker>();
         services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
+        services.AddScoped<FlowTrim.Application.Usage.IUsageRecordRepository, UsageRecordRepository>();
         return services;
     }
 }

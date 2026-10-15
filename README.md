@@ -166,6 +166,11 @@ tagged with `daysUntilCharge` and an `alertWindow` (`Overdue` / `Today` / `DueWi
 `DueWithin7Days` / `Later`), plus the server `referenceDate` (computed in America/Bogota, UTC−5).
 The countdown is computed server-side so the client never recomputes "today".
 
+`POST /api/subscriptions/{id}/usage-records` records a **declared** usage (`usageDate`, `usageCount ≥ 0`,
+optional `notes`) for an existing subscription — `201` / `400` / `404` (unknown subscription).
+`GET /api/subscriptions/{id}/usage-records?from=&to=` lists its usage (ordered by date desc, optional
+date range) — `200` / `404`. Usage is declared by the user, not verified.
+
 `POST /api/simulations` simulates cancelling a selection of subscriptions and returns, **per currency**,
 the current/selected/projected monthly equivalent and the potential savings over the given horizons
 (default `1, 12, 24` months). It **persists nothing**; `400` on a non-positive horizon. The response
