@@ -141,6 +141,11 @@ tagged with `daysUntilCharge` and an `alertWindow` (`Overdue` / `Today` / `DueWi
 `DueWithin7Days` / `Later`), plus the server `referenceDate` (computed in America/Bogota, UTC−5).
 The countdown is computed server-side so the client never recomputes "today".
 
+`POST /api/simulations` simulates cancelling a selection of subscriptions and returns, **per currency**,
+the current/selected/projected monthly equivalent and the potential savings over the given horizons
+(default `1, 12, 24` months). It **persists nothing**; `400` on a non-positive horizon. The response
+carries the assumptions (constant prices, no penalties/taxes, not guaranteed).
+
 ## CORS
 
 Cross-origin requests are allowed only from the origins in `Cors:AllowedOrigins` (default
