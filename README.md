@@ -15,6 +15,7 @@ banks, detect charges or verify usage — the user enters their own data. The An
   never summed).
 - Upcoming charges with a server-computed countdown and alert windows (overdue/today/≤3/≤7/later).
 - Cancellation simulator: potential savings at 1/12/24 months (does not persist).
+- Declared usage records and cost-per-use analysis for a selected or derived period.
 - Health check (API + database), consistent RFC 7807 errors, configurable CORS.
 
 ## Tech stack
@@ -171,6 +172,11 @@ optional `notes`) for an existing subscription — `201` / `400` / `404` (unknow
 `GET /api/subscriptions/{id}/usage-records?from=&to=` lists its usage (ordered by date desc, optional
 date range) — `200` / `404`. Usage is declared by the user, not verified.
 
+`GET /api/subscriptions/{id}/cost-per-use?from=&to=` returns the period cost, total declared uses and
+the rounded cost per use — `200` / `404`. If there are no records or total uses are zero, the response
+is `calculable: false` with `costPerUse: null`; it never divides by zero. When both bounds are omitted,
+the period is derived from the minimum and maximum usage dates.
+
 `POST /api/simulations` simulates cancelling a selection of subscriptions and returns, **per currency**,
 the current/selected/projected monthly equivalent and the potential savings over the given horizons
 (default `1, 12, 24` months). It **persists nothing**; `400` on a non-positive horizon. The response
@@ -196,7 +202,6 @@ redirection is disabled so the HTTP dev flow and CORS preflight work cleanly.
 - **Manual data only** — no bank integration, no automatic charge detection, no usage verification.
 - **No authentication / multi-user** yet — data is not isolated per user (planned, HU-12, post-MVP).
 - **No currency conversion** — totals are always grouped per currency, never combined.
-- **Usage & cost-per-use** (HU-05/HU-06) are not implemented yet.
 - **Local demo** — PostgreSQL runs via Docker Compose; there is no public deployment yet.
 - Estimates (projections, savings) assume constant prices and carry their assumptions; they are never
   presented as guarantees.

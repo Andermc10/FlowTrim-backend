@@ -195,6 +195,21 @@ app.MapGet("/api/subscriptions/{id:guid}/usage-records", async (
 })
 .WithName("ListUsage");
 
+// Calcula el costo declarado por uso. 200 con resultado o 404 si la suscripción no existe.
+app.MapGet("/api/subscriptions/{id:guid}/cost-per-use", async (
+    Guid id,
+    IGetCostPerUseHandler handler,
+    CancellationToken cancellationToken,
+    DateOnly? from,
+    DateOnly? to) =>
+{
+    var result = await handler.HandleAsync(id, from, to, cancellationToken);
+    return result is null
+        ? Results.Problem(statusCode: StatusCodes.Status404NotFound)
+        : Results.Ok(result);
+})
+.WithName("GetCostPerUse");
+
 // Simulación de cancelación y ahorro potencial. No persiste nada. 200 con el resultado, o 400 si los horizontes son inválidos.
 app.MapPost("/api/simulations", async (
     SimulationRequest request,
