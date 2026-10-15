@@ -1,4 +1,5 @@
 using FlowTrim.Application.Subscriptions;
+using FlowTrim.Domain.Common;
 using FlowTrim.Domain.Subscriptions;
 using FlowTrim.Tests.Common;
 
@@ -65,26 +66,27 @@ public sealed class CreateSubscriptionHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_WithEmptyName_ReturnsNameError()
+    public async Task HandleAsync_WithEmptyName_ThrowsDomainValidation()
     {
         var (handler, repo) = BuildHandler();
 
-        var result = await handler.HandleAsync(ValidRequest(name: "   "), CancellationToken.None);
+        // Las reglas de valor las impone el dominio: lanza y el manejador global las traduce a 400.
+        var ex = await Assert.ThrowsAsync<DomainValidationException>(() =>
+            handler.HandleAsync(ValidRequest(name: "   "), CancellationToken.None));
 
-        Assert.False(result.IsSuccess);
-        Assert.True(result.Errors.ContainsKey("name"));
+        Assert.Equal("name", ex.PropertyName);
         Assert.Equal(0, repo.SaveCount);
     }
 
     [Fact]
-    public async Task HandleAsync_WithNonPositiveAmount_ReturnsAmountError()
+    public async Task HandleAsync_WithNonPositiveAmount_ThrowsDomainValidation()
     {
         var (handler, _) = BuildHandler();
 
-        var result = await handler.HandleAsync(ValidRequest(amount: 0m), CancellationToken.None);
+        var ex = await Assert.ThrowsAsync<DomainValidationException>(() =>
+            handler.HandleAsync(ValidRequest(amount: 0m), CancellationToken.None));
 
-        Assert.False(result.IsSuccess);
-        Assert.True(result.Errors.ContainsKey("amount"));
+        Assert.Equal("amount", ex.PropertyName);
     }
 
     [Fact]

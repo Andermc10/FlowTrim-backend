@@ -1,4 +1,3 @@
-using FlowTrim.Domain.Common;
 using FlowTrim.Domain.Subscriptions;
 
 namespace FlowTrim.Application.Subscriptions;
@@ -57,27 +56,18 @@ public sealed class CreateSubscriptionHandler : ICreateSubscriptionHandler
             return CreateSubscriptionResult.Invalid(errors);
         }
 
-        try
-        {
-            // El dominio es la autoridad de las reglas de valor (nombre, importe, moneda, categoría).
-            var subscription = Subscription.Create(
-                request.Name,
-                request.Category,
-                request.Amount!.Value,
-                request.Currency,
-                billingCycle,
-                request.NextBillingDate!.Value,
-                _timeProvider);
+        // El dominio es la autoridad de las reglas de valor (nombre, importe, moneda, categoría).
+        // Si una invariante falla lanza DomainValidationException, que el manejador global traduce a 400.
+        var subscription = Subscription.Create(
+            request.Name,
+            request.Category,
+            request.Amount!.Value,
+            request.Currency,
+            billingCycle,
+            request.NextBillingDate!.Value,
+            _timeProvider);
 
-            await _repository.AddAsync(subscription, cancellationToken);
-            return CreateSubscriptionResult.Success(SubscriptionMapper.ToResponse(subscription));
-        }
-        catch (DomainValidationException exception)
-        {
-            return CreateSubscriptionResult.Invalid(new Dictionary<string, string[]>
-            {
-                [exception.PropertyName] = [exception.Message]
-            });
-        }
+        await _repository.AddAsync(subscription, cancellationToken);
+        return CreateSubscriptionResult.Success(SubscriptionMapper.ToResponse(subscription));
     }
 }
