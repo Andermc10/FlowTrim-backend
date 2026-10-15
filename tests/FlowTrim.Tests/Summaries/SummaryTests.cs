@@ -103,6 +103,34 @@ public sealed class SummaryTests
         Assert.Empty(result);
     }
 
+    [Fact]
+    public void Calculate_YearlyNotDivisibleByTwelve_RoundsPerItemThenProjects()
+    {
+        // 100000 / 12 = 8333.333… → 8333.33 (redondeo por ítem); anual = 8333.33 × 12 = 99999.96.
+        var subscriptions = new[] { Make(100000m, BillingCycle.Yearly) };
+
+        var result = SummaryCalculator.Calculate(subscriptions);
+
+        var cop = Assert.Single(result);
+        Assert.Equal(8333.33m, cop.MonthlyEquivalent);
+        Assert.Equal(99999.96m, cop.AnnualProjection);
+    }
+
+    [Fact]
+    public void Calculate_CurrencyWithOnlyInactive_IsNotListed()
+    {
+        var subscriptions = new[]
+        {
+            Make(10000m, BillingCycle.Monthly, "COP", active: true),
+            Make(20m, BillingCycle.Monthly, "USD", active: false),
+        };
+
+        var result = SummaryCalculator.Calculate(subscriptions);
+
+        var only = Assert.Single(result);
+        Assert.Equal("COP", only.Currency);
+    }
+
     // ----- GetSummaryHandler -----
 
     [Fact]
