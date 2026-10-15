@@ -146,6 +146,14 @@ the current/selected/projected monthly equivalent and the potential savings over
 (default `1, 12, 24` months). It **persists nothing**; `400` on a non-positive horizon. The response
 carries the assumptions (constant prices, no penalties/taxes, not guaranteed).
 
+## Errors
+
+A global exception handler returns RFC 7807 `ProblemDetails` consistently: `400`
+`ValidationProblemDetails` for validation (including domain invariants), `404` for unknown resources,
+and a generic `500` for unexpected failures — never a stack trace, connection string or any internal
+detail (the real error is logged server-side). It runs in all environments (replacing the Development
+exception page) so behavior is consistent.
+
 ## CORS
 
 Cross-origin requests are allowed only from the origins in `Cors:AllowedOrigins` (default

@@ -1,4 +1,3 @@
-using FlowTrim.Domain.Common;
 using FlowTrim.Domain.Subscriptions;
 
 namespace FlowTrim.Application.Subscriptions;
@@ -68,27 +67,18 @@ public sealed class UpdateSubscriptionHandler : IUpdateSubscriptionHandler
             return UpdateSubscriptionResult.Invalid(errors);
         }
 
-        try
-        {
-            subscription.Update(
-                request.Name,
-                request.Category,
-                request.Amount!.Value,
-                request.Currency,
-                billingCycle,
-                request.NextBillingDate!.Value,
-                status,
-                _timeProvider);
+        // Las invariantes de dominio que fallen lanzan DomainValidationException → 400 (manejador global).
+        subscription.Update(
+            request.Name,
+            request.Category,
+            request.Amount!.Value,
+            request.Currency,
+            billingCycle,
+            request.NextBillingDate!.Value,
+            status,
+            _timeProvider);
 
-            await _repository.UpdateAsync(subscription, cancellationToken);
-            return UpdateSubscriptionResult.Success(SubscriptionMapper.ToResponse(subscription));
-        }
-        catch (DomainValidationException exception)
-        {
-            return UpdateSubscriptionResult.Invalid(new Dictionary<string, string[]>
-            {
-                [exception.PropertyName] = [exception.Message]
-            });
-        }
+        await _repository.UpdateAsync(subscription, cancellationToken);
+        return UpdateSubscriptionResult.Success(SubscriptionMapper.ToResponse(subscription));
     }
 }

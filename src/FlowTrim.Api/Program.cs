@@ -19,6 +19,10 @@ var connectionString = builder.Configuration.GetConnectionString("FlowTrimDb")
 builder.Services.AddInfrastructure(connectionString);
 builder.Services.AddApplication();
 
+// Manejo centralizado de errores: ProblemDetails consistente + handler global.
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<FlowTrim.Api.GlobalExceptionHandler>();
+
 // CORS: solo los orígenes configurados (por defecto el dev de Angular). Nunca se abre a todos.
 const string corsPolicyName = "AllowAngularDev";
 string[] allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
@@ -32,6 +36,9 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// El manejador de excepciones va primero para capturar cualquier fallo del pipeline.
+app.UseExceptionHandler();
 
 // Configuración del pipeline HTTP.
 if (app.Environment.IsDevelopment())

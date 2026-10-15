@@ -1,4 +1,5 @@
 using FlowTrim.Application.Subscriptions;
+using FlowTrim.Domain.Common;
 using FlowTrim.Domain.Subscriptions;
 using FlowTrim.Tests.Common;
 
@@ -106,17 +107,18 @@ public sealed class SubscriptionManagementHandlersTests
     }
 
     [Fact]
-    public async Task Update_InvalidAmount_ReturnsInvalid()
+    public async Task Update_InvalidAmount_ThrowsDomainValidation()
     {
         var repo = new InMemorySubscriptionRepository();
         var subscription = NewSubscription("Netflix", new DateOnly(2026, 11, 1));
         repo.Items.Add(subscription);
         var handler = new UpdateSubscriptionHandler(repo, Clock());
 
-        var result = await handler.HandleAsync(subscription.Id, ValidUpdate(amount: 0m), CancellationToken.None);
+        // El importe ≤ 0 es una invariante de dominio: lanza y el manejador global la traduce a 400.
+        var ex = await Assert.ThrowsAsync<DomainValidationException>(() =>
+            handler.HandleAsync(subscription.Id, ValidUpdate(amount: 0m), CancellationToken.None));
 
-        Assert.Equal(UpdateSubscriptionResult.ResultKind.Invalid, result.Kind);
-        Assert.True(result.Errors.ContainsKey("amount"));
+        Assert.Equal("amount", ex.PropertyName);
     }
 
     [Fact]
