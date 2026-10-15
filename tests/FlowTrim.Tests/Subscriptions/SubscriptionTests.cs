@@ -190,4 +190,35 @@ public sealed class SubscriptionTests
 
         Assert.Equal("status", ex.PropertyName);
     }
+
+    private static readonly DateOnly Reference = new(2026, 10, 14);
+
+    private static Subscription WithNextBillingDate(DateOnly date) =>
+        Subscription.Create("Service", null, 10m, "COP", BillingCycle.Monthly, date, Clock());
+
+    [Theory]
+    [InlineData(10)]
+    [InlineData(0)]
+    [InlineData(-3)]
+    public void GetDaysUntilCharge_ComputesWholeDays(int offset)
+    {
+        var subscription = WithNextBillingDate(Reference.AddDays(offset));
+
+        Assert.Equal(offset, subscription.GetDaysUntilCharge(Reference));
+    }
+
+    [Theory]
+    [InlineData(-1, AlertWindow.Overdue)]
+    [InlineData(0, AlertWindow.Today)]
+    [InlineData(1, AlertWindow.DueWithin3Days)]
+    [InlineData(3, AlertWindow.DueWithin3Days)]
+    [InlineData(4, AlertWindow.DueWithin7Days)]
+    [InlineData(7, AlertWindow.DueWithin7Days)]
+    [InlineData(8, AlertWindow.Later)]
+    public void GetAlertWindow_ClassifiesByDaysRemaining(int offset, AlertWindow expected)
+    {
+        var subscription = WithNextBillingDate(Reference.AddDays(offset));
+
+        Assert.Equal(expected, subscription.GetAlertWindow(Reference));
+    }
 }

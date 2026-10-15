@@ -192,6 +192,22 @@ public sealed class Subscription
         _ => throw new InvalidOperationException($"Unsupported billing cycle: {BillingCycle}")
     };
 
+    /// <summary>
+    /// Días enteros hasta el próximo cobro respecto a <paramref name="referenceDate"/>.
+    /// Negativo si la fecha ya pasó (vencido). Función pura: la fecha de referencia se pasa como parámetro.
+    /// </summary>
+    public int GetDaysUntilCharge(DateOnly referenceDate) => NextBillingDate.DayNumber - referenceDate.DayNumber;
+
+    /// <summary>Clasifica el cobro en una ventana de alerta según los días que faltan.</summary>
+    public AlertWindow GetAlertWindow(DateOnly referenceDate) => GetDaysUntilCharge(referenceDate) switch
+    {
+        < 0 => AlertWindow.Overdue,
+        0 => AlertWindow.Today,
+        <= 3 => AlertWindow.DueWithin3Days,
+        <= 7 => AlertWindow.DueWithin7Days,
+        _ => AlertWindow.Later
+    };
+
     // Valida que la moneda tenga exactamente 3 letras A-Z (solo formato, sin lista ISO real: MVP mono-moneda).
     private static bool IsValidCurrencyFormat(string currency)
     {
