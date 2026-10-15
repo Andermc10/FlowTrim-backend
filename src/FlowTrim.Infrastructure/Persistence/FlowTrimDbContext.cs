@@ -1,4 +1,5 @@
 using FlowTrim.Domain.Subscriptions;
+using FlowTrim.Domain.Usage;
 using Microsoft.EntityFrameworkCore;
 
 namespace FlowTrim.Infrastructure.Persistence;
@@ -11,6 +12,7 @@ public sealed class FlowTrimDbContext : DbContext
     }
 
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
+    public DbSet<UsageRecord> UsageRecords => Set<UsageRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

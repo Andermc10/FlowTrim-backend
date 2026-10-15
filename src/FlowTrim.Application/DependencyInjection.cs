@@ -18,6 +18,8 @@ public static class DependencyInjection
         services.AddScoped<IGetUpcomingChargesHandler, GetUpcomingChargesHandler>();
         services.AddScoped<Summaries.IGetSummaryHandler, Summaries.GetSummaryHandler>();
         services.AddScoped<Simulations.ISimulateHandler, Simulations.SimulateHandler>();
+        services.AddScoped<Usage.IRegisterUsageHandler, Usage.RegisterUsageHandler>();
+        services.AddScoped<Usage.IListUsageHandler, Usage.ListUsageHandler>();
         return services;
     }
 }

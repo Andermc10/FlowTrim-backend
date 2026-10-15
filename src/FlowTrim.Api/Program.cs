@@ -4,6 +4,7 @@ using FlowTrim.Application.Health;
 using FlowTrim.Application.Simulations;
 using FlowTrim.Application.Subscriptions;
 using FlowTrim.Application.Summaries;
+using FlowTrim.Application.Usage;
 using FlowTrim.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -160,6 +161,39 @@ app.MapGet("/api/summary", async (
     return Results.Ok(summary);
 })
 .WithName("GetSummary");
+
+// Registrar un uso declarado para una suscripción. 201 / 400 / 404 (si la suscripción no existe).
+app.MapPost("/api/subscriptions/{id:guid}/usage-records", async (
+    Guid id,
+    RegisterUsageRequest request,
+    IRegisterUsageHandler handler,
+    CancellationToken cancellationToken) =>
+{
+    RegisterUsageResult result = await handler.HandleAsync(id, request, cancellationToken);
+
+    return result.Kind switch
+    {
+        RegisterUsageResult.ResultKind.NotFound => Results.Problem(statusCode: StatusCodes.Status404NotFound),
+        RegisterUsageResult.ResultKind.Invalid => Results.ValidationProblem(result.Errors),
+        _ => Results.Created($"/api/subscriptions/{id}/usage-records/{result.Value!.Id}", result.Value),
+    };
+})
+.WithName("RegisterUsage");
+
+// Listar los usos de una suscripción, filtrables por periodo. 200 / 404.
+app.MapGet("/api/subscriptions/{id:guid}/usage-records", async (
+    Guid id,
+    IListUsageHandler handler,
+    CancellationToken cancellationToken,
+    DateOnly? from,
+    DateOnly? to) =>
+{
+    var records = await handler.HandleAsync(id, from, to, cancellationToken);
+    return records is null
+        ? Results.Problem(statusCode: StatusCodes.Status404NotFound)
+        : Results.Ok(records);
+})
+.WithName("ListUsage");
 
 // Simulación de cancelación y ahorro potencial. No persiste nada. 200 con el resultado, o 400 si los horizontes son inválidos.
 app.MapPost("/api/simulations", async (
