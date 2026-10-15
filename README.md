@@ -141,6 +141,13 @@ tagged with `daysUntilCharge` and an `alertWindow` (`Overdue` / `Today` / `DueWi
 `DueWithin7Days` / `Later`), plus the server `referenceDate` (computed in America/Bogota, UTC−5).
 The countdown is computed server-side so the client never recomputes "today".
 
+## CORS
+
+Cross-origin requests are allowed only from the origins in `Cors:AllowedOrigins` (default
+`http://localhost:4200`, the Angular dev server) — never all origins. Override per environment via
+configuration, e.g. the `Cors__AllowedOrigins__0` environment variable. In Development, HTTPS
+redirection is disabled so the HTTP dev flow and CORS preflight work cleanly.
+
 ## Notes
 
 - Known deferred issues are tracked in [`docs/TECH-DEBT.md`](docs/TECH-DEBT.md).

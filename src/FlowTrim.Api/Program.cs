@@ -18,6 +18,18 @@ var connectionString = builder.Configuration.GetConnectionString("FlowTrimDb")
 builder.Services.AddInfrastructure(connectionString);
 builder.Services.AddApplication();
 
+// CORS: solo los orígenes configurados (por defecto el dev de Angular). Nunca se abre a todos.
+const string corsPolicyName = "AllowAngularDev";
+string[] allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+    ?? ["http://localhost:4200"];
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(corsPolicyName, policy =>
+        policy.WithOrigins(allowedOrigins)
+            .WithMethods("GET", "POST", "PUT", "DELETE")
+            .WithHeaders("Content-Type"));
+});
+
 var app = builder.Build();
 
 // Configuración del pipeline HTTP.
@@ -26,7 +38,13 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+// En desarrollo trabajamos sobre HTTP para que el preflight CORS no se redirija entre esquemas.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
+app.UseCors(corsPolicyName);
 
 // Comprueba disponibilidad de API y base de datos. Devuelve 200 si todo está bien; 503 si la BD no responde.
 // Nunca expone detalles internos del fallo.
