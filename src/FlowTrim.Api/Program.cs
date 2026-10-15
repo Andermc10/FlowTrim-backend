@@ -71,6 +71,16 @@ app.MapGet("/api/subscriptions", async (
 })
 .WithName("ListSubscriptions");
 
+// Próximos cobros (activas) ordenados por fecha, con cuenta regresiva y ventana de alerta.
+app.MapGet("/api/subscriptions/upcoming", async (
+    IGetUpcomingChargesHandler handler,
+    CancellationToken cancellationToken) =>
+{
+    var result = await handler.HandleAsync(cancellationToken);
+    return Results.Ok(result);
+})
+.WithName("GetUpcomingCharges");
+
 // Detalle de una suscripción.
 app.MapGet("/api/subscriptions/{id:guid}", async (
     Guid id,
