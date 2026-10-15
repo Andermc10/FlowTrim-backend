@@ -1,15 +1,40 @@
 # FlowTrim-backend
 
-C# / ASP.NET Core Web API for **FlowTrim** — a deterministic engine to track recurring
-subscriptions, compute monthly-equivalent and annual spending, warn about upcoming
-renewals, and simulate cancellation savings. Built on .NET 10 with a layered architecture.
+C# / ASP.NET Core Web API for **FlowTrim** — a deterministic, transparent engine to track recurring
+subscriptions, compute monthly-equivalent and annual spending, warn about upcoming renewals, and
+simulate cancellation savings. Built on .NET 10 with a layered architecture.
+
+FlowTrim is a **manual-data** personal-finance tool and a portfolio project: it does not connect to
+banks, detect charges or verify usage — the user enters their own data. The Angular client lives in
+[`FlowTrim-frontend`](https://github.com/Andermc10/FlowTrim-frontend).
+
+## Features (API)
+
+- Register, list (paged), view, edit and delete subscriptions.
+- Financial summary **per currency**: monthly equivalent + annual projection (active only; currencies
+  never summed).
+- Upcoming charges with a server-computed countdown and alert windows (overdue/today/≤3/≤7/later).
+- Cancellation simulator: potential savings at 1/12/24 months (does not persist).
+- Health check (API + database), consistent RFC 7807 errors, configurable CORS.
 
 ## Tech stack
 
-- .NET 10 · ASP.NET Core Web API
+- .NET 10 · ASP.NET Core Web API (minimal APIs)
 - PostgreSQL 17 (local via Docker Compose)
-- Entity Framework Core + Npgsql (added in later tasks)
+- Entity Framework Core 10 + Npgsql, `EFCore.NamingConventions` (snake_case)
 - xUnit for tests
+
+## Architecture
+
+Modular monolith, layered. Project references enforce the dependency rule:
+
+- `Api` → `Application` + `Infrastructure`
+- `Application` → `Domain`
+- `Infrastructure` → `Application` + `Domain`
+- `Domain` → nothing
+
+Business rules live in `Domain` (pure, unit-tested); EF entities never leave the backend — the API
+exposes request/response DTOs only.
 
 ## Solution layout
 
@@ -97,9 +122,9 @@ Run the API and query it:
 
 ```bash
 docker compose up -d
-dotnet run --project src/FlowTrim.Api
-# in another terminal (replace the port with the one printed by the API):
-curl http://localhost:5080/api/health
+dotnet run --project src/FlowTrim.Api --launch-profile http   # http://localhost:5214
+# in another terminal:
+curl http://localhost:5214/api/health
 ```
 
 ## Database migrations
@@ -161,6 +186,19 @@ Cross-origin requests are allowed only from the origins in `Cors:AllowedOrigins`
 configuration, e.g. the `Cors__AllowedOrigins__0` environment variable. In Development, HTTPS
 redirection is disabled so the HTTP dev flow and CORS preflight work cleanly.
 
+## Known limitations
+
+- **Manual data only** — no bank integration, no automatic charge detection, no usage verification.
+- **No authentication / multi-user** yet — data is not isolated per user (planned, HU-12, post-MVP).
+- **No currency conversion** — totals are always grouped per currency, never combined.
+- **Usage & cost-per-use** (HU-05/HU-06) are not implemented yet.
+- **Local demo** — PostgreSQL runs via Docker Compose; there is no public deployment yet.
+- Estimates (projections, savings) assume constant prices and carry their assumptions; they are never
+  presented as guarantees.
+
+See [`docs/RELEASE-REVIEW.md`](docs/RELEASE-REVIEW.md) for the pre-release quality/security review.
+
 ## Notes
 
-- Known deferred issues are tracked in [`docs/TECH-DEBT.md`](docs/TECH-DEBT.md).
+- Known deferred technical items are tracked in [`docs/TECH-DEBT.md`](docs/TECH-DEBT.md).
+- Planning, user stories and specs live in the `FlowTrim-tracker` repository.
