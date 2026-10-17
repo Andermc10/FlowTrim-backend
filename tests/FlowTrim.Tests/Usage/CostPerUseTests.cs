@@ -108,7 +108,7 @@ public sealed class CostPerUseTests
     [Fact]
     public async Task GetCostPerUse_UnknownSubscription_ReturnsNull()
     {
-        var handler = new GetCostPerUseHandler(new InMemorySubscriptionRepository(), new InMemoryUsageRecordRepository());
+        var handler = new GetCostPerUseHandler(new InMemorySubscriptionRepository(), new InMemoryUsageRecordRepository(), new TestCurrentUser());
 
         var result = await handler.HandleAsync(Guid.NewGuid(), null, null, CancellationToken.None);
 
@@ -123,7 +123,7 @@ public sealed class CostPerUseTests
         var subscription = NewSubscription();
         subscriptions.Items.Add(subscription);
         usage.Items.Add(UsageRecord.Create(subscription.Id, new DateOnly(2026, 10, 10), 2, null));
-        var handler = new GetCostPerUseHandler(subscriptions, usage);
+        var handler = new GetCostPerUseHandler(subscriptions, usage, new TestCurrentUser());
 
         var result = await handler.HandleAsync(
             subscription.Id,

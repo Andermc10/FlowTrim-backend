@@ -1,4 +1,5 @@
 using FlowTrim.Domain.Subscriptions;
+using FlowTrim.Application.Abstractions;
 
 namespace FlowTrim.Application.Subscriptions;
 
@@ -17,11 +18,16 @@ public sealed class CreateSubscriptionHandler : ICreateSubscriptionHandler
 {
     private readonly ISubscriptionRepository _repository;
     private readonly TimeProvider _timeProvider;
+    private readonly ICurrentUser _currentUser;
 
-    public CreateSubscriptionHandler(ISubscriptionRepository repository, TimeProvider timeProvider)
+    public CreateSubscriptionHandler(
+        ISubscriptionRepository repository,
+        TimeProvider timeProvider,
+        ICurrentUser currentUser)
     {
         _repository = repository;
         _timeProvider = timeProvider;
+        _currentUser = currentUser;
     }
 
     public async Task<CreateSubscriptionResult> HandleAsync(
@@ -58,7 +64,8 @@ public sealed class CreateSubscriptionHandler : ICreateSubscriptionHandler
 
         // El dominio es la autoridad de las reglas de valor (nombre, importe, moneda, categoría).
         // Si una invariante falla lanza DomainValidationException, que el manejador global traduce a 400.
-        var subscription = Subscription.Create(
+        var subscription = Subscription.CreateForOwner(
+            _currentUser.GetOwnerId(),
             request.Name,
             request.Category,
             request.Amount!.Value,

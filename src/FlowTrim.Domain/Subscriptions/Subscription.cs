@@ -14,10 +14,14 @@ public sealed class Subscription
     /// <summary>Longitud máxima de la categoría (cuando se informa).</summary>
     public const int CategoryMaxLength = 60;
 
+    /// <summary>Longitud máxima del subject externo usado como propietario.</summary>
+    public const int OwnerIdMaxLength = 200;
+
     /// <summary>Moneda por defecto del MVP (ISO 4217).</summary>
     public const string DefaultCurrency = "COP";
 
     public Guid Id { get; private set; }
+    public string OwnerId { get; private set; } = null!;
     public string Name { get; private set; } = null!;
     public string? Category { get; private set; }
     public decimal Amount { get; private set; }
@@ -35,6 +39,7 @@ public sealed class Subscription
 
     private Subscription(
         Guid id,
+        string ownerId,
         string name,
         string? category,
         decimal amount,
@@ -46,6 +51,7 @@ public sealed class Subscription
         DateTimeOffset updatedAt)
     {
         Id = id;
+        OwnerId = ownerId;
         Name = name;
         Category = category;
         Amount = amount;
@@ -71,6 +77,58 @@ public sealed class Subscription
         BillingCycle billingCycle,
         DateOnly nextBillingDate,
         TimeProvider timeProvider)
+        => CreateInternal(
+            ownerId: string.Empty,
+            name,
+            category,
+            amount,
+            currency,
+            billingCycle,
+            nextBillingDate,
+            timeProvider);
+
+    /// <summary>Crea una suscripción asociada al subject estable del usuario autenticado.</summary>
+    public static Subscription CreateForOwner(
+        string? ownerId,
+        string? name,
+        string? category,
+        decimal amount,
+        string? currency,
+        BillingCycle billingCycle,
+        DateOnly nextBillingDate,
+        TimeProvider timeProvider)
+    {
+        ownerId = ownerId?.Trim() ?? string.Empty;
+        if (ownerId.Length == 0)
+        {
+            throw new DomainValidationException("ownerId", "Authenticated owner is required.");
+        }
+
+        if (ownerId.Length > OwnerIdMaxLength)
+        {
+            throw new DomainValidationException("ownerId", $"Owner identifier must be at most {OwnerIdMaxLength} characters.");
+        }
+
+        return CreateInternal(
+            ownerId,
+            name,
+            category,
+            amount,
+            currency,
+            billingCycle,
+            nextBillingDate,
+            timeProvider);
+    }
+
+    private static Subscription CreateInternal(
+        string ownerId,
+        string? name,
+        string? category,
+        decimal amount,
+        string? currency,
+        BillingCycle billingCycle,
+        DateOnly nextBillingDate,
+        TimeProvider timeProvider)
     {
         var (validName, validCategory, validAmount, validCurrency) =
             ValidateAndNormalize(name, category, amount, currency, billingCycle);
@@ -78,6 +136,7 @@ public sealed class Subscription
         var now = timeProvider.GetUtcNow();
         return new Subscription(
             Guid.NewGuid(),
+            ownerId,
             validName,
             validCategory,
             validAmount,

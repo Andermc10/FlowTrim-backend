@@ -15,6 +15,7 @@ public sealed class InMemoryUsageRecordRepository : IUsageRecordRepository
     }
 
     public Task<IReadOnlyList<UsageRecord>> ListBySubscriptionAsync(
+        string ownerId,
         Guid subscriptionId,
         DateOnly? from,
         DateOnly? to,

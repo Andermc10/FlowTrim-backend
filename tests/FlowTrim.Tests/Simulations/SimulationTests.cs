@@ -90,7 +90,7 @@ public sealed class SimulationTests
     {
         var repo = new InMemorySubscriptionRepository();
         repo.Items.Add(Make(38900m));
-        var handler = new SimulateHandler(repo);
+        var handler = new SimulateHandler(repo, new TestCurrentUser());
 
         var result = await handler.HandleAsync(new SimulationRequest(null, null), CancellationToken.None);
 
@@ -102,7 +102,7 @@ public sealed class SimulationTests
     [Fact]
     public async Task Simulate_InvalidHorizon_ReturnsInvalid()
     {
-        var handler = new SimulateHandler(new InMemorySubscriptionRepository());
+        var handler = new SimulateHandler(new InMemorySubscriptionRepository(), new TestCurrentUser());
 
         var result = await handler.HandleAsync(new SimulationRequest(null, [0]), CancellationToken.None);
 
@@ -117,7 +117,7 @@ public sealed class SimulationTests
         var netflix = Make(38900m, "COP");
         repo.Items.Add(netflix);
         repo.Items.Add(Make(10000m, "COP"));
-        var handler = new SimulateHandler(repo);
+        var handler = new SimulateHandler(repo, new TestCurrentUser());
 
         var result = await handler.HandleAsync(new SimulationRequest([netflix.Id], [12]), CancellationToken.None);
 

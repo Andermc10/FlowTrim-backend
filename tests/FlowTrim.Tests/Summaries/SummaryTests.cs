@@ -141,7 +141,7 @@ public sealed class SummaryTests
         repo.Items.Add(Make(120000m, BillingCycle.Yearly, "COP"));
         repo.Items.Add(Make(9.99m, BillingCycle.Monthly, "USD"));
         repo.Items.Add(Make(50000m, BillingCycle.Monthly, "COP", active: false));
-        var handler = new GetSummaryHandler(repo);
+        var handler = new GetSummaryHandler(repo, new TestCurrentUser());
 
         var result = await handler.HandleAsync(CancellationToken.None);
 
@@ -157,7 +157,7 @@ public sealed class SummaryTests
     [Fact]
     public async Task GetSummary_NoSubscriptions_ReturnsEmptyCurrencies()
     {
-        var handler = new GetSummaryHandler(new InMemorySubscriptionRepository());
+        var handler = new GetSummaryHandler(new InMemorySubscriptionRepository(), new TestCurrentUser());
 
         var result = await handler.HandleAsync(CancellationToken.None);
 

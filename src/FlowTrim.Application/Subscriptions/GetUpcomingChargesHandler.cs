@@ -1,5 +1,7 @@
 namespace FlowTrim.Application.Subscriptions;
 
+using FlowTrim.Application.Abstractions;
+
 /// <summary>Caso de uso: listar los próximos cobros de las suscripciones activas con su cuenta regresiva.</summary>
 public interface IGetUpcomingChargesHandler
 {
@@ -14,11 +16,13 @@ public sealed class GetUpcomingChargesHandler : IGetUpcomingChargesHandler
 
     private readonly ISubscriptionRepository _repository;
     private readonly TimeProvider _timeProvider;
+    private readonly ICurrentUser _currentUser;
 
-    public GetUpcomingChargesHandler(ISubscriptionRepository repository, TimeProvider timeProvider)
+    public GetUpcomingChargesHandler(ISubscriptionRepository repository, TimeProvider timeProvider, ICurrentUser currentUser)
     {
         _repository = repository;
         _timeProvider = timeProvider;
+        _currentUser = currentUser;
     }
 
     public async Task<UpcomingChargesResponse> HandleAsync(CancellationToken cancellationToken)
@@ -26,7 +30,7 @@ public sealed class GetUpcomingChargesHandler : IGetUpcomingChargesHandler
         // Fecha de referencia ("hoy") calculada en el servidor, en la zona del producto.
         var referenceDate = DateOnly.FromDateTime(_timeProvider.GetUtcNow().ToOffset(ReferenceOffset).DateTime);
 
-        var active = await _repository.ListActiveAsync(cancellationToken);
+        var active = await _repository.ListActiveAsync(_currentUser.GetOwnerId(), cancellationToken);
 
         var items = active
             .OrderBy(s => s.NextBillingDate)

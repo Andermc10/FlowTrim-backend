@@ -1,4 +1,5 @@
 using FlowTrim.Application.Subscriptions;
+using FlowTrim.Application.Abstractions;
 using FlowTrim.Domain.Simulations;
 
 namespace FlowTrim.Application.Simulations;
@@ -22,8 +23,13 @@ public sealed class SimulateHandler : ISimulateHandler
     ];
 
     private readonly ISubscriptionRepository _repository;
+    private readonly ICurrentUser _currentUser;
 
-    public SimulateHandler(ISubscriptionRepository repository) => _repository = repository;
+    public SimulateHandler(ISubscriptionRepository repository, ICurrentUser currentUser)
+    {
+        _repository = repository;
+        _currentUser = currentUser;
+    }
 
     public async Task<SimulationResult> HandleAsync(SimulationRequest request, CancellationToken cancellationToken)
     {
@@ -41,7 +47,7 @@ public sealed class SimulateHandler : ISimulateHandler
             ? new HashSet<Guid>()
             : new HashSet<Guid>(request.SubscriptionIds);
 
-        var active = await _repository.ListActiveAsync(cancellationToken);
+        var active = await _repository.ListActiveAsync(_currentUser.GetOwnerId(), cancellationToken);
 
         var currencies = SimulationCalculator.Calculate(active, selectedIds, horizons)
             .Select(c => new CurrencySimulationResponse(

@@ -1,4 +1,5 @@
 using FlowTrim.Application.Subscriptions;
+using FlowTrim.Application.Abstractions;
 using FlowTrim.Domain.Usage;
 
 namespace FlowTrim.Application.Usage;
@@ -13,13 +14,16 @@ public sealed class RegisterUsageHandler : IRegisterUsageHandler
 {
     private readonly ISubscriptionRepository _subscriptionRepository;
     private readonly IUsageRecordRepository _usageRecordRepository;
+    private readonly ICurrentUser _currentUser;
 
     public RegisterUsageHandler(
         ISubscriptionRepository subscriptionRepository,
-        IUsageRecordRepository usageRecordRepository)
+        IUsageRecordRepository usageRecordRepository,
+        ICurrentUser currentUser)
     {
         _subscriptionRepository = subscriptionRepository;
         _usageRecordRepository = usageRecordRepository;
+        _currentUser = currentUser;
     }
 
     public async Task<RegisterUsageResult> HandleAsync(
@@ -28,7 +32,7 @@ public sealed class RegisterUsageHandler : IRegisterUsageHandler
         CancellationToken cancellationToken)
     {
         // Solo se puede registrar uso de una suscripción existente.
-        var subscription = await _subscriptionRepository.GetByIdAsync(subscriptionId, cancellationToken);
+        var subscription = await _subscriptionRepository.GetByIdAsync(_currentUser.GetOwnerId(), subscriptionId, cancellationToken);
         if (subscription is null)
         {
             return RegisterUsageResult.NotFound();

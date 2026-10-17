@@ -23,7 +23,7 @@ public sealed class SubscriptionManagementHandlersTests
         repo.Items.Add(NewSubscription("Spotify", new DateOnly(2026, 12, 1)));
         repo.Items.Add(NewSubscription("Netflix", new DateOnly(2026, 11, 1)));
         repo.Items.Add(NewSubscription("Disney", new DateOnly(2026, 11, 1)));
-        var handler = new ListSubscriptionsHandler(repo);
+        var handler = new ListSubscriptionsHandler(repo, new TestCurrentUser());
 
         var result = await handler.HandleAsync(1, 20, CancellationToken.None);
 
@@ -35,7 +35,7 @@ public sealed class SubscriptionManagementHandlersTests
     public async Task List_ClampsPageAndPageSize()
     {
         var repo = new InMemorySubscriptionRepository();
-        var handler = new ListSubscriptionsHandler(repo);
+        var handler = new ListSubscriptionsHandler(repo, new TestCurrentUser());
 
         var result = await handler.HandleAsync(0, 500, CancellationToken.None);
 
@@ -51,7 +51,7 @@ public sealed class SubscriptionManagementHandlersTests
         var repo = new InMemorySubscriptionRepository();
         var subscription = NewSubscription("Netflix", new DateOnly(2026, 11, 1));
         repo.Items.Add(subscription);
-        var handler = new GetSubscriptionHandler(repo);
+        var handler = new GetSubscriptionHandler(repo, new TestCurrentUser());
 
         var result = await handler.HandleAsync(subscription.Id, CancellationToken.None);
 
@@ -62,7 +62,7 @@ public sealed class SubscriptionManagementHandlersTests
     [Fact]
     public async Task Get_UnknownId_ReturnsNull()
     {
-        var handler = new GetSubscriptionHandler(new InMemorySubscriptionRepository());
+        var handler = new GetSubscriptionHandler(new InMemorySubscriptionRepository(), new TestCurrentUser());
 
         var result = await handler.HandleAsync(Guid.NewGuid(), CancellationToken.None);
 
@@ -81,7 +81,7 @@ public sealed class SubscriptionManagementHandlersTests
     [Fact]
     public async Task Update_UnknownId_ReturnsNotFound()
     {
-        var handler = new UpdateSubscriptionHandler(new InMemorySubscriptionRepository(), Clock());
+        var handler = new UpdateSubscriptionHandler(new InMemorySubscriptionRepository(), Clock(), new TestCurrentUser());
 
         var result = await handler.HandleAsync(Guid.NewGuid(), ValidUpdate(), CancellationToken.None);
 
@@ -95,7 +95,7 @@ public sealed class SubscriptionManagementHandlersTests
         var subscription = NewSubscription("Netflix", new DateOnly(2026, 11, 1));
         repo.Items.Add(subscription);
         var later = FixedNow.AddDays(1);
-        var handler = new UpdateSubscriptionHandler(repo, new FixedTimeProvider(later));
+        var handler = new UpdateSubscriptionHandler(repo, new FixedTimeProvider(later), new TestCurrentUser());
 
         var result = await handler.HandleAsync(subscription.Id, ValidUpdate(), CancellationToken.None);
 
@@ -112,7 +112,7 @@ public sealed class SubscriptionManagementHandlersTests
         var repo = new InMemorySubscriptionRepository();
         var subscription = NewSubscription("Netflix", new DateOnly(2026, 11, 1));
         repo.Items.Add(subscription);
-        var handler = new UpdateSubscriptionHandler(repo, Clock());
+        var handler = new UpdateSubscriptionHandler(repo, Clock(), new TestCurrentUser());
 
         // El importe ≤ 0 es una invariante de dominio: lanza y el manejador global la traduce a 400.
         var ex = await Assert.ThrowsAsync<DomainValidationException>(() =>
@@ -127,7 +127,7 @@ public sealed class SubscriptionManagementHandlersTests
         var repo = new InMemorySubscriptionRepository();
         var subscription = NewSubscription("Netflix", new DateOnly(2026, 11, 1));
         repo.Items.Add(subscription);
-        var handler = new UpdateSubscriptionHandler(repo, Clock());
+        var handler = new UpdateSubscriptionHandler(repo, Clock(), new TestCurrentUser());
 
         var result = await handler.HandleAsync(subscription.Id, ValidUpdate(status: "Paused"), CancellationToken.None);
 
@@ -143,7 +143,7 @@ public sealed class SubscriptionManagementHandlersTests
         var repo = new InMemorySubscriptionRepository();
         var subscription = NewSubscription("Netflix", new DateOnly(2026, 11, 1));
         repo.Items.Add(subscription);
-        var handler = new DeleteSubscriptionHandler(repo);
+        var handler = new DeleteSubscriptionHandler(repo, new TestCurrentUser());
 
         var deleted = await handler.HandleAsync(subscription.Id, CancellationToken.None);
 
@@ -154,7 +154,7 @@ public sealed class SubscriptionManagementHandlersTests
     [Fact]
     public async Task Delete_UnknownId_ReturnsFalse()
     {
-        var handler = new DeleteSubscriptionHandler(new InMemorySubscriptionRepository());
+        var handler = new DeleteSubscriptionHandler(new InMemorySubscriptionRepository(), new TestCurrentUser());
 
         var deleted = await handler.HandleAsync(Guid.NewGuid(), CancellationToken.None);
 

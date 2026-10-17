@@ -1,4 +1,5 @@
 using FlowTrim.Domain.Subscriptions;
+using FlowTrim.Application.Abstractions;
 
 namespace FlowTrim.Application.Subscriptions;
 
@@ -12,11 +13,13 @@ public sealed class UpdateSubscriptionHandler : IUpdateSubscriptionHandler
 {
     private readonly ISubscriptionRepository _repository;
     private readonly TimeProvider _timeProvider;
+    private readonly ICurrentUser _currentUser;
 
-    public UpdateSubscriptionHandler(ISubscriptionRepository repository, TimeProvider timeProvider)
+    public UpdateSubscriptionHandler(ISubscriptionRepository repository, TimeProvider timeProvider, ICurrentUser currentUser)
     {
         _repository = repository;
         _timeProvider = timeProvider;
+        _currentUser = currentUser;
     }
 
     public async Task<UpdateSubscriptionResult> HandleAsync(
@@ -24,7 +27,7 @@ public sealed class UpdateSubscriptionHandler : IUpdateSubscriptionHandler
         UpdateSubscriptionRequest request,
         CancellationToken cancellationToken)
     {
-        var subscription = await _repository.GetByIdAsync(id, cancellationToken);
+        var subscription = await _repository.GetByIdAsync(_currentUser.GetOwnerId(), id, cancellationToken);
         if (subscription is null)
         {
             return UpdateSubscriptionResult.NotFound();

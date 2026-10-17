@@ -26,7 +26,7 @@ public sealed class GetUpcomingChargesHandlerTests
     [Fact]
     public async Task GetUpcoming_UsesServerReferenceDate()
     {
-        var handler = new GetUpcomingChargesHandler(new InMemorySubscriptionRepository(), Clock());
+        var handler = new GetUpcomingChargesHandler(new InMemorySubscriptionRepository(), Clock(), new TestCurrentUser());
 
         var result = await handler.HandleAsync(CancellationToken.None);
 
@@ -42,7 +42,7 @@ public sealed class GetUpcomingChargesHandlerTests
         repo.Items.Add(WithDate("Overdue", ReferenceDate.AddDays(-2)));   // Overdue
         repo.Items.Add(WithDate("Soon-B", ReferenceDate.AddDays(2)));     // DueWithin3Days
         repo.Items.Add(WithDate("Soon-A", ReferenceDate.AddDays(2)));     // DueWithin3Days (same date → by name)
-        var handler = new GetUpcomingChargesHandler(repo, Clock());
+        var handler = new GetUpcomingChargesHandler(repo, Clock(), new TestCurrentUser());
 
         var result = await handler.HandleAsync(CancellationToken.None);
 
@@ -59,7 +59,7 @@ public sealed class GetUpcomingChargesHandlerTests
         var repo = new InMemorySubscriptionRepository();
         repo.Items.Add(WithDate("Active", ReferenceDate.AddDays(1)));
         repo.Items.Add(WithDate("Inactive", ReferenceDate.AddDays(1), active: false));
-        var handler = new GetUpcomingChargesHandler(repo, Clock());
+        var handler = new GetUpcomingChargesHandler(repo, Clock(), new TestCurrentUser());
 
         var result = await handler.HandleAsync(CancellationToken.None);
 
