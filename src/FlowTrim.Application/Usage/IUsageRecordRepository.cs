@@ -9,10 +9,11 @@ public interface IUsageRecordRepository
     Task AddAsync(UsageRecord usageRecord, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Lista los usos de una suscripción, opcionalmente filtrados por rango de fechas (ambos inclusivos),
+    /// Lista los usos de una suscripción del propietario, opcionalmente filtrados por rango de fechas (ambos inclusivos),
     /// ordenados por fecha descendente.
     /// </summary>
     Task<IReadOnlyList<UsageRecord>> ListBySubscriptionAsync(
+        string ownerId,
         Guid subscriptionId,
         DateOnly? from,
         DateOnly? to,

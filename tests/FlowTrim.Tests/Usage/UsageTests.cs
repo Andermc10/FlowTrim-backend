@@ -71,7 +71,12 @@ public sealed class UsageTests
     {
         var subs = new InMemorySubscriptionRepository();
         var usage = new InMemoryUsageRecordRepository();
-        return (new RegisterUsageHandler(subs, usage), new ListUsageHandler(subs, usage), subs, usage);
+        var currentUser = new TestCurrentUser();
+        return (
+            new RegisterUsageHandler(subs, usage, currentUser),
+            new ListUsageHandler(subs, usage, currentUser),
+            subs,
+            usage);
     }
 
     [Fact]

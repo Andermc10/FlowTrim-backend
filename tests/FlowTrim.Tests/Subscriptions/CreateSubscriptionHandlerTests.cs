@@ -13,7 +13,7 @@ public sealed class CreateSubscriptionHandlerTests
     private static (CreateSubscriptionHandler Handler, InMemorySubscriptionRepository Repo) BuildHandler()
     {
         var repo = new InMemorySubscriptionRepository();
-        var handler = new CreateSubscriptionHandler(repo, new FixedTimeProvider(FixedNow));
+        var handler = new CreateSubscriptionHandler(repo, new FixedTimeProvider(FixedNow), new TestCurrentUser());
         return (handler, repo);
     }
 

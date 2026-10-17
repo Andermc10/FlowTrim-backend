@@ -1,4 +1,5 @@
 using FlowTrim.Application.Subscriptions;
+using FlowTrim.Application.Abstractions;
 using FlowTrim.Domain.Usage;
 
 namespace FlowTrim.Application.Usage;
@@ -17,13 +18,16 @@ public sealed class GetCostPerUseHandler : IGetCostPerUseHandler
 {
     private readonly ISubscriptionRepository _subscriptionRepository;
     private readonly IUsageRecordRepository _usageRecordRepository;
+    private readonly ICurrentUser _currentUser;
 
     public GetCostPerUseHandler(
         ISubscriptionRepository subscriptionRepository,
-        IUsageRecordRepository usageRecordRepository)
+        IUsageRecordRepository usageRecordRepository,
+        ICurrentUser currentUser)
     {
         _subscriptionRepository = subscriptionRepository;
         _usageRecordRepository = usageRecordRepository;
+        _currentUser = currentUser;
     }
 
     public async Task<CostPerUseResponse?> HandleAsync(
@@ -32,13 +36,15 @@ public sealed class GetCostPerUseHandler : IGetCostPerUseHandler
         DateOnly? to,
         CancellationToken cancellationToken)
     {
-        var subscription = await _subscriptionRepository.GetByIdAsync(subscriptionId, cancellationToken);
+        var ownerId = _currentUser.GetOwnerId();
+        var subscription = await _subscriptionRepository.GetByIdAsync(ownerId, subscriptionId, cancellationToken);
         if (subscription is null)
         {
             return null;
         }
 
         var records = await _usageRecordRepository.ListBySubscriptionAsync(
+            ownerId,
             subscriptionId,
             from,
             to,

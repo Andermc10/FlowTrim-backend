@@ -1,3 +1,4 @@
+using FlowTrim.Api.Authentication;
 using FlowTrim.Application;
 using FlowTrim.Application.Abstractions;
 using FlowTrim.Application.Health;
@@ -6,11 +7,52 @@ using FlowTrim.Application.Subscriptions;
 using FlowTrim.Application.Summaries;
 using FlowTrim.Application.Usage;
 using FlowTrim.Infrastructure;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Documentación OpenAPI (solo se expone en desarrollo más abajo).
 builder.Services.AddOpenApi();
+
+var jwtOptions = builder.Configuration
+    .GetSection(JwtAuthenticationOptions.SectionName)
+    .Get<JwtAuthenticationOptions>() ?? new JwtAuthenticationOptions();
+
+if (!builder.Environment.IsDevelopment() &&
+    (string.IsNullOrWhiteSpace(jwtOptions.Authority) || string.IsNullOrWhiteSpace(jwtOptions.Audience)))
+{
+    throw new InvalidOperationException(
+        "Authentication:Authority and Authentication:Audience must be configured outside development.");
+}
+
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.Authority = jwtOptions.Authority;
+        options.Audience = jwtOptions.Audience;
+        options.RequireHttpsMetadata = jwtOptions.RequireHttpsMetadata;
+        options.MapInboundClaims = false;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            NameClaimType = "sub",
+            RoleClaimType = "role",
+            ClockSkew = TimeSpan.FromMinutes(1),
+        };
+        options.Events = new JwtBearerEvents
+        {
+            OnAuthenticationFailed = context =>
+            {
+                // Nunca se registra el token ni el contenido de la excepción en la respuesta.
+                context.HttpContext.Items["JwtAuthenticationFailed"] = true;
+                return Task.CompletedTask;
+            },
+        };
+    });
+builder.Services.AddAuthorization();
 
 // La cadena de conexión nunca se versiona: viene de User Secrets (dev) o variables de entorno (deploy).
 var connectionString = builder.Configuration.GetConnectionString("FlowTrimDb")
@@ -32,8 +74,8 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy(corsPolicyName, policy =>
         policy.WithOrigins(allowedOrigins)
-            .WithMethods("GET", "POST", "PUT", "DELETE")
-            .WithHeaders("Content-Type"));
+            .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+            .WithHeaders("Accept", "Content-Type", "Authorization"));
 });
 
 var app = builder.Build();
@@ -54,6 +96,8 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseCors(corsPolicyName);
+app.UseAuthentication();
+app.UseAuthorization();
 
 // Comprueba disponibilidad de API y base de datos. Devuelve 200 si todo está bien; 503 si la BD no responde.
 // Nunca expone detalles internos del fallo.
@@ -84,6 +128,7 @@ app.MapPost("/api/subscriptions", async (
         ? Results.Created($"/api/subscriptions/{result.Value!.Id}", result.Value)
         : Results.ValidationProblem(result.Errors);
 })
+.RequireAuthorization()
 .WithName("CreateSubscription");
 
 // Lista paginada de suscripciones (orden: próxima fecha de cobro, luego nombre).
@@ -96,6 +141,7 @@ app.MapGet("/api/subscriptions", async (
     var result = await handler.HandleAsync(page ?? 1, pageSize ?? ListSubscriptionsHandler.DefaultPageSize, cancellationToken);
     return Results.Ok(result);
 })
+.RequireAuthorization()
 .WithName("ListSubscriptions");
 
 // Próximos cobros (activas) ordenados por fecha, con cuenta regresiva y ventana de alerta.
@@ -106,6 +152,7 @@ app.MapGet("/api/subscriptions/upcoming", async (
     var result = await handler.HandleAsync(cancellationToken);
     return Results.Ok(result);
 })
+.RequireAuthorization()
 .WithName("GetUpcomingCharges");
 
 // Detalle de una suscripción.
@@ -119,6 +166,7 @@ app.MapGet("/api/subscriptions/{id:guid}", async (
         ? Results.Problem(statusCode: StatusCodes.Status404NotFound)
         : Results.Ok(subscription);
 })
+.RequireAuthorization()
 .WithName("GetSubscription");
 
 // Actualización completa de una suscripción.
@@ -137,6 +185,7 @@ app.MapPut("/api/subscriptions/{id:guid}", async (
         _ => Results.Ok(result.Value),
     };
 })
+.RequireAuthorization()
 .WithName("UpdateSubscription");
 
 // Eliminación de una suscripción.
@@ -150,6 +199,7 @@ app.MapDelete("/api/subscriptions/{id:guid}", async (
         ? Results.NoContent()
         : Results.Problem(statusCode: StatusCodes.Status404NotFound);
 })
+.RequireAuthorization()
 .WithName("DeleteSubscription");
 
 // Resumen financiero por moneda (equivalente mensual y proyección anual de las suscripciones activas).
@@ -160,6 +210,7 @@ app.MapGet("/api/summary", async (
     var summary = await handler.HandleAsync(cancellationToken);
     return Results.Ok(summary);
 })
+.RequireAuthorization()
 .WithName("GetSummary");
 
 // Registrar un uso declarado para una suscripción. 201 / 400 / 404 (si la suscripción no existe).
@@ -178,6 +229,7 @@ app.MapPost("/api/subscriptions/{id:guid}/usage-records", async (
         _ => Results.Created($"/api/subscriptions/{id}/usage-records/{result.Value!.Id}", result.Value),
     };
 })
+.RequireAuthorization()
 .WithName("RegisterUsage");
 
 // Listar los usos de una suscripción, filtrables por periodo. 200 / 404.
@@ -193,6 +245,7 @@ app.MapGet("/api/subscriptions/{id:guid}/usage-records", async (
         ? Results.Problem(statusCode: StatusCodes.Status404NotFound)
         : Results.Ok(records);
 })
+.RequireAuthorization()
 .WithName("ListUsage");
 
 // Calcula el costo declarado por uso. 200 con resultado o 404 si la suscripción no existe.
@@ -208,6 +261,7 @@ app.MapGet("/api/subscriptions/{id:guid}/cost-per-use", async (
         ? Results.Problem(statusCode: StatusCodes.Status404NotFound)
         : Results.Ok(result);
 })
+.RequireAuthorization()
 .WithName("GetCostPerUse");
 
 // Simulación de cancelación y ahorro potencial. No persiste nada. 200 con el resultado, o 400 si los horizontes son inválidos.
@@ -222,6 +276,7 @@ app.MapPost("/api/simulations", async (
         ? Results.Ok(result.Value)
         : Results.ValidationProblem(result.Errors);
 })
+.RequireAuthorization()
 .WithName("Simulate");
 
 app.Run();

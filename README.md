@@ -17,6 +17,7 @@ banks, detect charges or verify usage — the user enters their own data. The An
 - Cancellation simulator: potential savings at 1/12/24 months (does not persist).
 - Declared usage records and cost-per-use analysis for a selected or derived period.
 - Health check (API + database), consistent RFC 7807 errors, configurable CORS.
+- JWT/OIDC authentication with server-side owner isolation for private financial data.
 
 ## Tech stack
 
@@ -104,6 +105,29 @@ The connection string is **never** committed. Provide it through:
 - **Deployment:** the environment variable `ConnectionStrings__FlowTrimDb`.
 
 The password in the connection string must match the one in your `.env`.
+
+## JWT authentication
+
+Private API routes require a bearer token issued by a configured OIDC provider. The API validates the
+token using the provider authority metadata and audience; it never issues passwords or validates JWT
+signatures manually.
+
+Configure these values through User Secrets locally or environment variables in deployment:
+
+```bash
+dotnet user-secrets set "Authentication:Authority" "https://your-issuer.example.com/" --project src/FlowTrim.Api
+dotnet user-secrets set "Authentication:Audience" "flowtrim-api" --project src/FlowTrim.Api
+```
+
+Equivalent deployment variables are `Authentication__Authority` and `Authentication__Audience`.
+`Authentication:RequireHttpsMetadata` must remain `true` outside local development.
+
+The API uses the stable `sub` claim as the owner key. The client never sends an owner identifier;
+repositories apply the owner predicate server-side. Existing local rows are assigned to the technical
+`legacy-owner` value by `AddUserOwnership`; review or reset that data before using a private demo.
+
+`GET /api/health` remains public. Subscription, usage, summary, upcoming-charge, cost-per-use and
+simulation routes return `401` without a valid token and never expose another owner's data.
 
 ## Build and test
 
@@ -200,7 +224,8 @@ redirection is disabled so the HTTP dev flow and CORS preflight work cleanly.
 ## Known limitations
 
 - **Manual data only** — no bank integration, no automatic charge detection, no usage verification.
-- **No authentication / multi-user** yet — data is not isolated per user (planned, HU-12, post-MVP).
+- **Provider setup required** — JWT validation and owner isolation are implemented, but the deployment
+  still needs one selected OIDC provider and its Authority/Audience configuration.
 - **No currency conversion** — totals are always grouped per currency, never combined.
 - **Local demo** — PostgreSQL runs via Docker Compose; there is no public deployment yet.
 - Estimates (projections, savings) assume constant prices and carry their assumptions; they are never

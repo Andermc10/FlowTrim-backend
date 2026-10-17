@@ -17,23 +17,26 @@ internal sealed class SubscriptionRepository : ISubscriptionRepository
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<Subscription?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
-        await _dbContext.Subscriptions.FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
+    public async Task<Subscription?> GetByIdAsync(string ownerId, Guid id, CancellationToken cancellationToken) =>
+        await _dbContext.Subscriptions.FirstOrDefaultAsync(
+            s => s.OwnerId == ownerId && s.Id == id,
+            cancellationToken);
 
-    public async Task<IReadOnlyList<Subscription>> ListAsync(int skip, int take, CancellationToken cancellationToken) =>
+    public async Task<IReadOnlyList<Subscription>> ListAsync(string ownerId, int skip, int take, CancellationToken cancellationToken) =>
         await _dbContext.Subscriptions
+            .Where(s => s.OwnerId == ownerId)
             .OrderBy(s => s.NextBillingDate)
             .ThenBy(s => s.Name)
             .Skip(skip)
             .Take(take)
             .ToListAsync(cancellationToken);
 
-    public async Task<int> CountAsync(CancellationToken cancellationToken) =>
-        await _dbContext.Subscriptions.CountAsync(cancellationToken);
+    public async Task<int> CountAsync(string ownerId, CancellationToken cancellationToken) =>
+        await _dbContext.Subscriptions.CountAsync(s => s.OwnerId == ownerId, cancellationToken);
 
-    public async Task<IReadOnlyList<Subscription>> ListActiveAsync(CancellationToken cancellationToken) =>
+    public async Task<IReadOnlyList<Subscription>> ListActiveAsync(string ownerId, CancellationToken cancellationToken) =>
         await _dbContext.Subscriptions
-            .Where(s => s.Status == SubscriptionStatus.Active)
+            .Where(s => s.OwnerId == ownerId && s.Status == SubscriptionStatus.Active)
             .ToListAsync(cancellationToken);
 
     public async Task UpdateAsync(Subscription subscription, CancellationToken cancellationToken)
@@ -42,9 +45,11 @@ internal sealed class SubscriptionRepository : ISubscriptionRepository
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<bool> DeleteAsync(string ownerId, Guid id, CancellationToken cancellationToken)
     {
-        var subscription = await _dbContext.Subscriptions.FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
+        var subscription = await _dbContext.Subscriptions.FirstOrDefaultAsync(
+            s => s.OwnerId == ownerId && s.Id == id,
+            cancellationToken);
         if (subscription is null)
         {
             return false;

@@ -15,6 +15,7 @@ internal sealed class SubscriptionConfiguration : IEntityTypeConfiguration<Subsc
     {
         builder.ToTable("subscriptions", table =>
         {
+            table.HasCheckConstraint("ck_subscriptions_owner_id_not_empty", "owner_id <> ''");
             // Las invariantes también se expresan en la base de datos.
             table.HasCheckConstraint("ck_subscriptions_amount_positive", "amount > 0");
             table.HasCheckConstraint("ck_subscriptions_billing_cycle", "billing_cycle IN ('Monthly', 'Yearly')");
@@ -24,6 +25,7 @@ internal sealed class SubscriptionConfiguration : IEntityTypeConfiguration<Subsc
         builder.HasKey(s => s.Id).HasName("pk_subscriptions");
 
         builder.Property(s => s.Id).HasColumnType("uuid");
+        builder.Property(s => s.OwnerId).HasMaxLength(Subscription.OwnerIdMaxLength).IsRequired();
         builder.Property(s => s.Name).HasMaxLength(Subscription.NameMaxLength).IsRequired();
         builder.Property(s => s.Category).HasMaxLength(Subscription.CategoryMaxLength);
         builder.Property(s => s.Amount).HasColumnType("numeric(18,2)").IsRequired();
@@ -41,5 +43,7 @@ internal sealed class SubscriptionConfiguration : IEntityTypeConfiguration<Subsc
         builder.Property(s => s.UpdatedAt).HasColumnType("timestamptz").IsRequired();
 
         builder.HasIndex(s => s.NextBillingDate).HasDatabaseName("ix_subscriptions_next_billing_date");
+        builder.HasIndex(s => new { s.OwnerId, s.NextBillingDate })
+            .HasDatabaseName("ix_subscriptions_owner_id_next_billing_date");
     }
 }

@@ -16,12 +16,13 @@ public sealed class InMemorySubscriptionRepository : ISubscriptionRepository
         return Task.CompletedTask;
     }
 
-    public Task<Subscription?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
-        Task.FromResult(Items.FirstOrDefault(s => s.Id == id));
+    public Task<Subscription?> GetByIdAsync(string ownerId, Guid id, CancellationToken cancellationToken) =>
+        Task.FromResult(Items.FirstOrDefault(s => MatchesOwner(s, ownerId) && s.Id == id));
 
-    public Task<IReadOnlyList<Subscription>> ListAsync(int skip, int take, CancellationToken cancellationToken)
+    public Task<IReadOnlyList<Subscription>> ListAsync(string ownerId, int skip, int take, CancellationToken cancellationToken)
     {
         IReadOnlyList<Subscription> page = Items
+            .Where(s => MatchesOwner(s, ownerId))
             .OrderBy(s => s.NextBillingDate)
             .ThenBy(s => s.Name)
             .Skip(skip)
@@ -30,11 +31,14 @@ public sealed class InMemorySubscriptionRepository : ISubscriptionRepository
         return Task.FromResult(page);
     }
 
-    public Task<int> CountAsync(CancellationToken cancellationToken) => Task.FromResult(Items.Count);
+    public Task<int> CountAsync(string ownerId, CancellationToken cancellationToken) =>
+        Task.FromResult(Items.Count(s => MatchesOwner(s, ownerId)));
 
-    public Task<IReadOnlyList<Subscription>> ListActiveAsync(CancellationToken cancellationToken)
+    public Task<IReadOnlyList<Subscription>> ListActiveAsync(string ownerId, CancellationToken cancellationToken)
     {
-        IReadOnlyList<Subscription> active = Items.Where(s => s.Status == SubscriptionStatus.Active).ToList();
+        IReadOnlyList<Subscription> active = Items
+            .Where(s => MatchesOwner(s, ownerId) && s.Status == SubscriptionStatus.Active)
+            .ToList();
         return Task.FromResult(active);
     }
 
@@ -45,9 +49,9 @@ public sealed class InMemorySubscriptionRepository : ISubscriptionRepository
         return Task.CompletedTask;
     }
 
-    public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken)
+    public Task<bool> DeleteAsync(string ownerId, Guid id, CancellationToken cancellationToken)
     {
-        var existing = Items.FirstOrDefault(s => s.Id == id);
+        var existing = Items.FirstOrDefault(s => MatchesOwner(s, ownerId) && s.Id == id);
         if (existing is null)
         {
             return Task.FromResult(false);
@@ -56,4 +60,7 @@ public sealed class InMemorySubscriptionRepository : ISubscriptionRepository
         Items.Remove(existing);
         return Task.FromResult(true);
     }
+
+    private static bool MatchesOwner(Subscription subscription, string ownerId) =>
+        subscription.OwnerId.Length == 0 || subscription.OwnerId == ownerId;
 }

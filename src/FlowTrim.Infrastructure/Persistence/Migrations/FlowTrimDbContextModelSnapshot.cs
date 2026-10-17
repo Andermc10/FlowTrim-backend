@@ -64,6 +64,12 @@ namespace FlowTrim.Infrastructure.Persistence.Migrations
                         .HasColumnType("date")
                         .HasColumnName("next_billing_date");
 
+                    b.Property<string>("OwnerId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("owner_id");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("text")
@@ -79,11 +85,16 @@ namespace FlowTrim.Infrastructure.Persistence.Migrations
                     b.HasIndex("NextBillingDate")
                         .HasDatabaseName("ix_subscriptions_next_billing_date");
 
+                    b.HasIndex("OwnerId", "NextBillingDate")
+                        .HasDatabaseName("ix_subscriptions_owner_id_next_billing_date");
+
                     b.ToTable("subscriptions", null, t =>
                         {
                             t.HasCheckConstraint("ck_subscriptions_amount_positive", "amount > 0");
 
                             t.HasCheckConstraint("ck_subscriptions_billing_cycle", "billing_cycle IN ('Monthly', 'Yearly')");
+
+                            t.HasCheckConstraint("ck_subscriptions_owner_id_not_empty", "owner_id <> ''");
 
                             t.HasCheckConstraint("ck_subscriptions_status", "status IN ('Active', 'Inactive')");
                         });

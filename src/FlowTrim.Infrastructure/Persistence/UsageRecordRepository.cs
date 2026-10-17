@@ -18,12 +18,15 @@ internal sealed class UsageRecordRepository : IUsageRecordRepository
     }
 
     public async Task<IReadOnlyList<UsageRecord>> ListBySubscriptionAsync(
+        string ownerId,
         Guid subscriptionId,
         DateOnly? from,
         DateOnly? to,
         CancellationToken cancellationToken)
     {
-        var query = _dbContext.UsageRecords.Where(u => u.SubscriptionId == subscriptionId);
+        var query = _dbContext.UsageRecords.Where(u =>
+            u.SubscriptionId == subscriptionId &&
+            _dbContext.Subscriptions.Any(s => s.Id == u.SubscriptionId && s.OwnerId == ownerId));
 
         if (from is not null)
         {
