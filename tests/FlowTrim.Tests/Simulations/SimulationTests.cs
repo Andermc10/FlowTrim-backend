@@ -13,7 +13,7 @@ public sealed class SimulationTests
 
     private static Subscription Make(decimal amount, string currency = "COP", BillingCycle cycle = BillingCycle.Monthly, bool active = true)
     {
-        var subscription = Subscription.Create("Service", null, amount, currency, cycle, SampleDate, new FixedTimeProvider(FixedNow));
+        var subscription = Subscription.Create(TestCurrentUser.DefaultSubject, "Service", null, amount, currency, cycle, SampleDate, new FixedTimeProvider(FixedNow));
         if (!active)
         {
             subscription.Update("Service", null, amount, currency, cycle, SampleDate, SubscriptionStatus.Inactive, new FixedTimeProvider(FixedNow));

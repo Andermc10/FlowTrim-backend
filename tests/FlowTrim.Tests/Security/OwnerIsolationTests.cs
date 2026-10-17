@@ -87,7 +87,7 @@ public sealed class OwnerIsolationTests
     }
 
     private static Subscription NewSubscription(string name, string ownerId, decimal amount = 10m) =>
-        Subscription.CreateForOwner(
+        Subscription.Create(
             ownerId,
             name,
             null,

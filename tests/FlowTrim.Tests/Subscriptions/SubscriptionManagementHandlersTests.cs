@@ -12,7 +12,7 @@ public sealed class SubscriptionManagementHandlersTests
     private static TimeProvider Clock() => new FixedTimeProvider(FixedNow);
 
     private static Subscription NewSubscription(string name, DateOnly nextBillingDate) =>
-        Subscription.Create(name, null, 10m, "COP", BillingCycle.Monthly, nextBillingDate, new FixedTimeProvider(FixedNow));
+        Subscription.Create(TestCurrentUser.DefaultSubject, name, null, 10m, "COP", BillingCycle.Monthly, nextBillingDate, new FixedTimeProvider(FixedNow));
 
     // ----- List -----
 

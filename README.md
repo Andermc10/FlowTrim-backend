@@ -106,28 +106,42 @@ The connection string is **never** committed. Provide it through:
 
 The password in the connection string must match the one in your `.env`.
 
-## JWT authentication
+## JWT authentication (Auth0)
 
-Private API routes require a bearer token issued by a configured OIDC provider. The API validates the
-token using the provider authority metadata and audience; it never issues passwords or validates JWT
-signatures manually.
+Private API routes require a bearer access token issued by **Auth0** (any standards-compliant OIDC
+provider works the same way). The API validates signature (provider JWKS), issuer, audience and lifetime
+with `JwtBearer`; it never issues passwords or validates tokens manually.
 
-Configure these values through User Secrets locally or environment variables in deployment:
+Auth0 setup (once per tenant):
+
+1. **APIs → Create API** — identifier = your audience (e.g. `https://api.flowtrim.dev`), signing RS256.
+2. **Applications → Single Page Application** — used by the Angular client (see the frontend README).
+
+Configure the API through User Secrets locally or environment variables in deployment:
 
 ```bash
-dotnet user-secrets set "Authentication:Authority" "https://your-issuer.example.com/" --project src/FlowTrim.Api
-dotnet user-secrets set "Authentication:Audience" "flowtrim-api" --project src/FlowTrim.Api
+dotnet user-secrets set "Authentication:Authority" "https://<tenant>.<region>.auth0.com/" --project src/FlowTrim.Api
+dotnet user-secrets set "Authentication:Audience" "https://api.flowtrim.dev" --project src/FlowTrim.Api
 ```
 
 Equivalent deployment variables are `Authentication__Authority` and `Authentication__Audience`.
-`Authentication:RequireHttpsMetadata` must remain `true` outside local development.
+Both are **required in every environment**: the API refuses to start without them (validated on start,
+so `dotnet ef` still works). `Authentication:RequireHttpsMetadata` defaults to `true`.
 
-The API uses the stable `sub` claim as the owner key. The client never sends an owner identifier;
-repositories apply the owner predicate server-side. Existing local rows are assigned to the technical
-`legacy-owner` value by `AddUserOwnership`; review or reset that data before using a private demo.
+Authorization rules:
 
-`GET /api/health` remains public. Subscription, usage, summary, upcoming-charge, cost-per-use and
-simulation routes return `401` without a valid token and never expose another owner's data.
+- The owner key is the token's stable `sub` claim; a token without `sub` gets `403`.
+- The client never sends an owner identifier; repositories apply the owner predicate server-side.
+- Another owner's subscription (or its usage) answers `404`, exactly like a missing id.
+- `GET /api/health` stays public; every other route returns `401` without a valid token.
+
+`AddUserOwnership` back-fills pre-authentication rows with the inaccessible owner `legacy-owner` and then
+drops the column default. For a clean local demo, reset the database volume:
+
+```bash
+docker compose down -v && docker compose up -d --wait
+dotnet ef database update --project src/FlowTrim.Infrastructure --startup-project src/FlowTrim.Api
+```
 
 ## Build and test
 
@@ -135,6 +149,10 @@ simulation routes return `401` without a valid token and never expose another ow
 dotnet build FlowTrim.slnx
 dotnet test FlowTrim.slnx
 ```
+
+Tests include HTTP integration tests (`tests/FlowTrim.Tests/Api`) that host the real API with
+`WebApplicationFactory`, a fake authentication scheme and in-memory repositories (no database, no real
+tokens), covering `401`/`403`, owner isolation on every private route and fail-fast configuration.
 
 ## Health check
 
@@ -224,8 +242,8 @@ redirection is disabled so the HTTP dev flow and CORS preflight work cleanly.
 ## Known limitations
 
 - **Manual data only** — no bank integration, no automatic charge detection, no usage verification.
-- **Provider setup required** — JWT validation and owner isolation are implemented, but the deployment
-  still needs one selected OIDC provider and its Authority/Audience configuration.
+- **Auth0 tenant required** — the API does not start until `Authentication:Authority` and
+  `Authentication:Audience` are configured.
 - **No currency conversion** — totals are always grouped per currency, never combined.
 - **Local demo** — PostgreSQL runs via Docker Compose; there is no public deployment yet.
 - Estimates (projections, savings) assume constant prices and carry their assumptions; they are never

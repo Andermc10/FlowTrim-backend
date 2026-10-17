@@ -14,7 +14,7 @@ public sealed class SummaryTests
 
     private static Subscription Make(decimal amount, BillingCycle cycle, string currency = "COP", bool active = true)
     {
-        var subscription = Subscription.Create("Service", null, amount, currency, cycle, SampleDate, Clock());
+        var subscription = Subscription.Create(TestCurrentUser.DefaultSubject, "Service", null, amount, currency, cycle, SampleDate, Clock());
         if (!active)
         {
             subscription.Update("Service", null, amount, currency, cycle, SampleDate, SubscriptionStatus.Inactive, Clock());

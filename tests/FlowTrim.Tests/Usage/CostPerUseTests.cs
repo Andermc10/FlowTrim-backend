@@ -11,6 +11,7 @@ public sealed class CostPerUseTests
 
     private static Subscription NewSubscription(decimal amount = 10m) =>
         Subscription.Create(
+            TestCurrentUser.DefaultSubject,
             "Netflix",
             null,
             amount,
