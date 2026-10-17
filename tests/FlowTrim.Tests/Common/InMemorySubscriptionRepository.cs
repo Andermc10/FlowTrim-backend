@@ -61,6 +61,7 @@ public sealed class InMemorySubscriptionRepository : ISubscriptionRepository
         return Task.FromResult(true);
     }
 
+    // Igual que el repositorio real: solo coincide el propietario exacto, sin comodines.
     private static bool MatchesOwner(Subscription subscription, string ownerId) =>
-        subscription.OwnerId.Length == 0 || subscription.OwnerId == ownerId;
+        subscription.OwnerId == ownerId;
 }

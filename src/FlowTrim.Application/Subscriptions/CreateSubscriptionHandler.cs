@@ -64,7 +64,7 @@ public sealed class CreateSubscriptionHandler : ICreateSubscriptionHandler
 
         // El dominio es la autoridad de las reglas de valor (nombre, importe, moneda, categoría).
         // Si una invariante falla lanza DomainValidationException, que el manejador global traduce a 400.
-        var subscription = Subscription.CreateForOwner(
+        var subscription = Subscription.Create(
             _currentUser.GetOwnerId(),
             request.Name,
             request.Category,

@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using FlowTrim.Application.Abstractions;
-using Microsoft.AspNetCore.Http;
 
 namespace FlowTrim.Api.Authentication;
 
@@ -11,7 +10,6 @@ internal sealed class HttpCurrentUser(IHttpContextAccessor httpContextAccessor) 
 
     public bool IsAuthenticated => User.Identity?.IsAuthenticated == true;
 
-    public string? Subject =>
-        User.FindFirstValue("sub") ??
-        User.FindFirstValue(ClaimTypes.NameIdentifier);
+    // Con MapInboundClaims = false el claim conserva su nombre JWT original ("sub").
+    public string? Subject => User.FindFirstValue(JwtAuthenticationOptions.SubjectClaimType);
 }

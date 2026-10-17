@@ -14,7 +14,7 @@ public sealed class GetUpcomingChargesHandlerTests
 
     private static Subscription WithDate(string name, DateOnly date, bool active = true)
     {
-        var subscription = Subscription.Create(name, null, 10m, "COP", BillingCycle.Monthly, date, Clock());
+        var subscription = Subscription.Create(TestCurrentUser.DefaultSubject, name, null, 10m, "COP", BillingCycle.Monthly, date, Clock());
         if (!active)
         {
             subscription.Update(name, null, 10m, "COP", BillingCycle.Monthly, date, SubscriptionStatus.Inactive, Clock());

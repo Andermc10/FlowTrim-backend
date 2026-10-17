@@ -14,7 +14,7 @@ public sealed class SubscriptionTests
     [Fact]
     public void Create_WithValidData_ReturnsActiveSubscription()
     {
-        var subscription = Subscription.Create("Netflix", "Streaming", 38900m, "COP", BillingCycle.Monthly, SampleDate, Clock());
+        var subscription = Subscription.Create(TestCurrentUser.DefaultSubject, "Netflix", "Streaming", 38900m, "COP", BillingCycle.Monthly, SampleDate, Clock());
 
         Assert.NotEqual(Guid.Empty, subscription.Id);
         Assert.Equal("Netflix", subscription.Name);
@@ -33,7 +33,7 @@ public sealed class SubscriptionTests
     public void Create_WithEmptyName_Throws(string? name)
     {
         var ex = Assert.Throws<DomainValidationException>(() =>
-            Subscription.Create(name, null, 10m, "COP", BillingCycle.Monthly, SampleDate, Clock()));
+            Subscription.Create(TestCurrentUser.DefaultSubject, name, null, 10m, "COP", BillingCycle.Monthly, SampleDate, Clock()));
 
         Assert.Equal("name", ex.PropertyName);
     }
@@ -44,7 +44,7 @@ public sealed class SubscriptionTests
         var longName = new string('x', Subscription.NameMaxLength + 1);
 
         var ex = Assert.Throws<DomainValidationException>(() =>
-            Subscription.Create(longName, null, 10m, "COP", BillingCycle.Monthly, SampleDate, Clock()));
+            Subscription.Create(TestCurrentUser.DefaultSubject, longName, null, 10m, "COP", BillingCycle.Monthly, SampleDate, Clock()));
 
         Assert.Equal("name", ex.PropertyName);
     }
@@ -56,7 +56,7 @@ public sealed class SubscriptionTests
     public void Create_WithNonPositiveAmount_Throws(decimal amount)
     {
         var ex = Assert.Throws<DomainValidationException>(() =>
-            Subscription.Create("Netflix", null, amount, "COP", BillingCycle.Monthly, SampleDate, Clock()));
+            Subscription.Create(TestCurrentUser.DefaultSubject, "Netflix", null, amount, "COP", BillingCycle.Monthly, SampleDate, Clock()));
 
         Assert.Equal("amount", ex.PropertyName);
     }
@@ -64,7 +64,7 @@ public sealed class SubscriptionTests
     [Fact]
     public void Create_RoundsAmountToTwoDecimals()
     {
-        var subscription = Subscription.Create("Spotify", null, 10.005m, "COP", BillingCycle.Monthly, SampleDate, Clock());
+        var subscription = Subscription.Create(TestCurrentUser.DefaultSubject, "Spotify", null, 10.005m, "COP", BillingCycle.Monthly, SampleDate, Clock());
 
         Assert.Equal(10.01m, subscription.Amount);
     }
@@ -72,7 +72,7 @@ public sealed class SubscriptionTests
     [Fact]
     public void Create_WithLowercaseCurrency_StoresUppercased()
     {
-        var subscription = Subscription.Create("Netflix", null, 10m, "usd", BillingCycle.Monthly, SampleDate, Clock());
+        var subscription = Subscription.Create(TestCurrentUser.DefaultSubject, "Netflix", null, 10m, "usd", BillingCycle.Monthly, SampleDate, Clock());
 
         Assert.Equal("USD", subscription.Currency);
     }
@@ -83,7 +83,7 @@ public sealed class SubscriptionTests
     [InlineData("  ")]
     public void Create_WithMissingCurrency_DefaultsToCop(string? currency)
     {
-        var subscription = Subscription.Create("Netflix", null, 10m, currency, BillingCycle.Monthly, SampleDate, Clock());
+        var subscription = Subscription.Create(TestCurrentUser.DefaultSubject, "Netflix", null, 10m, currency, BillingCycle.Monthly, SampleDate, Clock());
 
         Assert.Equal("COP", subscription.Currency);
     }
@@ -95,7 +95,7 @@ public sealed class SubscriptionTests
     public void Create_WithInvalidCurrencyFormat_Throws(string currency)
     {
         var ex = Assert.Throws<DomainValidationException>(() =>
-            Subscription.Create("Netflix", null, 10m, currency, BillingCycle.Monthly, SampleDate, Clock()));
+            Subscription.Create(TestCurrentUser.DefaultSubject, "Netflix", null, 10m, currency, BillingCycle.Monthly, SampleDate, Clock()));
 
         Assert.Equal("currency", ex.PropertyName);
     }
@@ -106,7 +106,7 @@ public sealed class SubscriptionTests
         var longCategory = new string('x', Subscription.CategoryMaxLength + 1);
 
         var ex = Assert.Throws<DomainValidationException>(() =>
-            Subscription.Create("Netflix", longCategory, 10m, "COP", BillingCycle.Monthly, SampleDate, Clock()));
+            Subscription.Create(TestCurrentUser.DefaultSubject, "Netflix", longCategory, 10m, "COP", BillingCycle.Monthly, SampleDate, Clock()));
 
         Assert.Equal("category", ex.PropertyName);
     }
@@ -114,7 +114,7 @@ public sealed class SubscriptionTests
     [Fact]
     public void Create_WithBlankCategory_StoresNull()
     {
-        var subscription = Subscription.Create("Netflix", "   ", 10m, "COP", BillingCycle.Monthly, SampleDate, Clock());
+        var subscription = Subscription.Create(TestCurrentUser.DefaultSubject, "Netflix", "   ", 10m, "COP", BillingCycle.Monthly, SampleDate, Clock());
 
         Assert.Null(subscription.Category);
     }
@@ -123,7 +123,7 @@ public sealed class SubscriptionTests
     public void Create_WithUnsupportedBillingCycle_Throws()
     {
         var ex = Assert.Throws<DomainValidationException>(() =>
-            Subscription.Create("Netflix", null, 10m, "COP", (BillingCycle)99, SampleDate, Clock()));
+            Subscription.Create(TestCurrentUser.DefaultSubject, "Netflix", null, 10m, "COP", (BillingCycle)99, SampleDate, Clock()));
 
         Assert.Equal("billingCycle", ex.PropertyName);
     }
@@ -131,7 +131,7 @@ public sealed class SubscriptionTests
     [Fact]
     public void Create_SetsCreatedAndUpdatedFromTimeProvider()
     {
-        var subscription = Subscription.Create("Netflix", null, 10m, "COP", BillingCycle.Monthly, SampleDate, Clock());
+        var subscription = Subscription.Create(TestCurrentUser.DefaultSubject, "Netflix", null, 10m, "COP", BillingCycle.Monthly, SampleDate, Clock());
 
         Assert.Equal(FixedNow, subscription.CreatedAt);
         Assert.Equal(FixedNow, subscription.UpdatedAt);
@@ -140,7 +140,7 @@ public sealed class SubscriptionTests
     [Fact]
     public void Update_WithValidData_UpdatesFieldsAndRefreshesUpdatedAt()
     {
-        var subscription = Subscription.Create("Netflix", "Streaming", 10m, "COP", BillingCycle.Monthly, SampleDate, Clock());
+        var subscription = Subscription.Create(TestCurrentUser.DefaultSubject, "Netflix", "Streaming", 10m, "COP", BillingCycle.Monthly, SampleDate, Clock());
         var later = FixedNow.AddDays(1);
         var newDate = new DateOnly(2026, 12, 1);
 
@@ -159,7 +159,7 @@ public sealed class SubscriptionTests
     [Fact]
     public void Update_KeepsIdAndCreatedAt()
     {
-        var subscription = Subscription.Create("Netflix", null, 10m, "COP", BillingCycle.Monthly, SampleDate, Clock());
+        var subscription = Subscription.Create(TestCurrentUser.DefaultSubject, "Netflix", null, 10m, "COP", BillingCycle.Monthly, SampleDate, Clock());
         var originalId = subscription.Id;
         var originalCreatedAt = subscription.CreatedAt;
 
@@ -172,7 +172,7 @@ public sealed class SubscriptionTests
     [Fact]
     public void Update_WithNonPositiveAmount_Throws()
     {
-        var subscription = Subscription.Create("Netflix", null, 10m, "COP", BillingCycle.Monthly, SampleDate, Clock());
+        var subscription = Subscription.Create(TestCurrentUser.DefaultSubject, "Netflix", null, 10m, "COP", BillingCycle.Monthly, SampleDate, Clock());
 
         var ex = Assert.Throws<DomainValidationException>(() =>
             subscription.Update("Netflix", null, 0m, "COP", BillingCycle.Monthly, SampleDate, SubscriptionStatus.Active, Clock()));
@@ -183,7 +183,7 @@ public sealed class SubscriptionTests
     [Fact]
     public void Update_WithUnsupportedStatus_Throws()
     {
-        var subscription = Subscription.Create("Netflix", null, 10m, "COP", BillingCycle.Monthly, SampleDate, Clock());
+        var subscription = Subscription.Create(TestCurrentUser.DefaultSubject, "Netflix", null, 10m, "COP", BillingCycle.Monthly, SampleDate, Clock());
 
         var ex = Assert.Throws<DomainValidationException>(() =>
             subscription.Update("Netflix", null, 10m, "COP", BillingCycle.Monthly, SampleDate, (SubscriptionStatus)99, Clock()));
@@ -194,7 +194,7 @@ public sealed class SubscriptionTests
     private static readonly DateOnly Reference = new(2026, 10, 14);
 
     private static Subscription WithNextBillingDate(DateOnly date) =>
-        Subscription.Create("Service", null, 10m, "COP", BillingCycle.Monthly, date, Clock());
+        Subscription.Create(TestCurrentUser.DefaultSubject, "Service", null, 10m, "COP", BillingCycle.Monthly, date, Clock());
 
     [Theory]
     [InlineData(10)]
@@ -220,5 +220,36 @@ public sealed class SubscriptionTests
         var subscription = WithNextBillingDate(Reference.AddDays(offset));
 
         Assert.Equal(expected, subscription.GetAlertWindow(Reference));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Create_WithoutOwner_Throws(string? ownerId)
+    {
+        var ex = Assert.Throws<DomainValidationException>(() =>
+            Subscription.Create(ownerId, "Netflix", null, 10m, "COP", BillingCycle.Monthly, SampleDate, Clock()));
+
+        Assert.Equal("ownerId", ex.PropertyName);
+    }
+
+    [Fact]
+    public void Create_WithTooLongOwner_Throws()
+    {
+        var longOwner = new string('a', Subscription.OwnerIdMaxLength + 1);
+
+        var ex = Assert.Throws<DomainValidationException>(() =>
+            Subscription.Create(longOwner, "Netflix", null, 10m, "COP", BillingCycle.Monthly, SampleDate, Clock()));
+
+        Assert.Equal("ownerId", ex.PropertyName);
+    }
+
+    [Fact]
+    public void Create_TrimsOwner()
+    {
+        var subscription = Subscription.Create("  auth0|abc  ", "Netflix", null, 10m, "COP", BillingCycle.Monthly, SampleDate, Clock());
+
+        Assert.Equal("auth0|abc", subscription.OwnerId);
     }
 }

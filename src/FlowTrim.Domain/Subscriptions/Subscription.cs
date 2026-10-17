@@ -64,31 +64,13 @@ public sealed class Subscription
     }
 
     /// <summary>
-    /// Crea una suscripción válida en estado <see cref="SubscriptionStatus.Active"/>.
+    /// Crea una suscripción válida en estado <see cref="SubscriptionStatus.Active"/> asociada al
+    /// subject estable del usuario autenticado (<paramref name="ownerId"/>).
     /// Valida todas las invariantes y lanza <see cref="DomainValidationException"/> ante la primera
     /// que falle. El reloj se inyecta vía <paramref name="timeProvider"/> para que las marcas de
     /// tiempo sean deterministas en pruebas (nunca se usa DateTime.UtcNow directamente).
     /// </summary>
     public static Subscription Create(
-        string? name,
-        string? category,
-        decimal amount,
-        string? currency,
-        BillingCycle billingCycle,
-        DateOnly nextBillingDate,
-        TimeProvider timeProvider)
-        => CreateInternal(
-            ownerId: string.Empty,
-            name,
-            category,
-            amount,
-            currency,
-            billingCycle,
-            nextBillingDate,
-            timeProvider);
-
-    /// <summary>Crea una suscripción asociada al subject estable del usuario autenticado.</summary>
-    public static Subscription CreateForOwner(
         string? ownerId,
         string? name,
         string? category,
@@ -98,45 +80,25 @@ public sealed class Subscription
         DateOnly nextBillingDate,
         TimeProvider timeProvider)
     {
-        ownerId = ownerId?.Trim() ?? string.Empty;
-        if (ownerId.Length == 0)
+        // Una suscripción sin propietario no puede existir: el aislamiento por usuario depende de ello.
+        var validOwnerId = ownerId?.Trim() ?? string.Empty;
+        if (validOwnerId.Length == 0)
         {
             throw new DomainValidationException("ownerId", "Authenticated owner is required.");
         }
 
-        if (ownerId.Length > OwnerIdMaxLength)
+        if (validOwnerId.Length > OwnerIdMaxLength)
         {
             throw new DomainValidationException("ownerId", $"Owner identifier must be at most {OwnerIdMaxLength} characters.");
         }
 
-        return CreateInternal(
-            ownerId,
-            name,
-            category,
-            amount,
-            currency,
-            billingCycle,
-            nextBillingDate,
-            timeProvider);
-    }
-
-    private static Subscription CreateInternal(
-        string ownerId,
-        string? name,
-        string? category,
-        decimal amount,
-        string? currency,
-        BillingCycle billingCycle,
-        DateOnly nextBillingDate,
-        TimeProvider timeProvider)
-    {
         var (validName, validCategory, validAmount, validCurrency) =
             ValidateAndNormalize(name, category, amount, currency, billingCycle);
 
         var now = timeProvider.GetUtcNow();
         return new Subscription(
             Guid.NewGuid(),
-            ownerId,
+            validOwnerId,
             validName,
             validCategory,
             validAmount,

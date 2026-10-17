@@ -16,9 +16,13 @@ namespace FlowTrim.Infrastructure.Persistence.Migrations
                 type: "character varying(200)",
                 maxLength: 200,
                 nullable: false,
-                // Las filas existentes pertenecen a la base de datos local previa a la autenticación.
-                // Se conservan bajo un propietario técnico hasta que el entorno defina su migración real.
+                // Las filas previas a la autenticación quedan bajo un propietario técnico inaccesible;
+                // la base de demo local se reinicia (ver spec HU-12 §7).
                 defaultValue: "legacy-owner");
+
+            // El valor por defecto solo sirve para rellenar las filas existentes: se elimina para que
+            // ninguna fila nueva pueda recibir un propietario de forma silenciosa.
+            migrationBuilder.Sql("ALTER TABLE subscriptions ALTER COLUMN owner_id DROP DEFAULT;");
 
             migrationBuilder.CreateIndex(
                 name: "ix_subscriptions_owner_id_next_billing_date",

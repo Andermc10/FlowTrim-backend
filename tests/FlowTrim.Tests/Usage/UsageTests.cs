@@ -12,7 +12,7 @@ public sealed class UsageTests
     private static readonly DateOnly UsageDate = new(2026, 10, 10);
 
     private static Subscription NewSubscription() =>
-        Subscription.Create("Netflix", null, 10m, "COP", BillingCycle.Monthly, new DateOnly(2026, 11, 1), new FixedTimeProvider(FixedNow));
+        Subscription.Create(TestCurrentUser.DefaultSubject, "Netflix", null, 10m, "COP", BillingCycle.Monthly, new DateOnly(2026, 11, 1), new FixedTimeProvider(FixedNow));
 
     // ----- Domain -----
 

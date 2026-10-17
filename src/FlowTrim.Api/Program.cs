@@ -8,6 +8,8 @@ using FlowTrim.Application.Summaries;
 using FlowTrim.Application.Usage;
 using FlowTrim.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -15,44 +17,42 @@ var builder = WebApplication.CreateBuilder(args);
 // Documentación OpenAPI (solo se expone en desarrollo más abajo).
 builder.Services.AddOpenApi();
 
-var jwtOptions = builder.Configuration
-    .GetSection(JwtAuthenticationOptions.SectionName)
-    .Get<JwtAuthenticationOptions>() ?? new JwtAuthenticationOptions();
-
-if (!builder.Environment.IsDevelopment() &&
-    (string.IsNullOrWhiteSpace(jwtOptions.Authority) || string.IsNullOrWhiteSpace(jwtOptions.Audience)))
-{
-    throw new InvalidOperationException(
-        "Authentication:Authority and Authentication:Audience must be configured outside development.");
-}
+// Authority y Audience se validan al arrancar (no al construir el host), para que herramientas como
+// `dotnet ef` sigan funcionando sin configuración de identidad.
+builder.Services.AddOptions<JwtAuthenticationOptions>()
+    .Bind(builder.Configuration.GetSection(JwtAuthenticationOptions.SectionName))
+    .Validate(
+        options => options.IsConfigured(),
+        "Authentication:Authority and Authentication:Audience must be configured (User Secrets or environment variables).")
+    .ValidateOnStart();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
+    .AddJwtBearer();
+
+// JwtBearer valida firma (JWKS del proveedor), issuer, audience y expiración; nunca se valida a mano.
+builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+    .Configure<IOptions<JwtAuthenticationOptions>>((bearer, authentication) =>
     {
-        options.Authority = jwtOptions.Authority;
-        options.Audience = jwtOptions.Audience;
-        options.RequireHttpsMetadata = jwtOptions.RequireHttpsMetadata;
-        options.MapInboundClaims = false;
-        options.TokenValidationParameters = new TokenValidationParameters
+        bearer.Authority = authentication.Value.Authority;
+        bearer.Audience = authentication.Value.Audience;
+        bearer.RequireHttpsMetadata = authentication.Value.RequireHttpsMetadata;
+        bearer.MapInboundClaims = false;
+        bearer.TokenValidationParameters = new TokenValidationParameters
         {
-            NameClaimType = "sub",
-            RoleClaimType = "role",
+            NameClaimType = JwtAuthenticationOptions.SubjectClaimType,
             ClockSkew = TimeSpan.FromMinutes(1),
         };
-        options.Events = new JwtBearerEvents
-        {
-            OnAuthenticationFailed = context =>
-            {
-                // Nunca se registra el token ni el contenido de la excepción en la respuesta.
-                context.HttpContext.Items["JwtAuthenticationFailed"] = true;
-                return Task.CompletedTask;
-            },
-        };
     });
-builder.Services.AddAuthorization();
+
+// Toda ruta con RequireAuthorization exige usuario autenticado con un subject estable.
+builder.Services.AddAuthorizationBuilder()
+    .SetDefaultPolicy(new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .RequireClaim(JwtAuthenticationOptions.SubjectClaimType)
+        .Build());
 
 // La cadena de conexión nunca se versiona: viene de User Secrets (dev) o variables de entorno (deploy).
 var connectionString = builder.Configuration.GetConnectionString("FlowTrimDb")
@@ -280,3 +280,6 @@ app.MapPost("/api/simulations", async (
 .WithName("Simulate");
 
 app.Run();
+
+// Expone la clase Program a WebApplicationFactory en las pruebas de integración HTTP.
+public partial class Program;
