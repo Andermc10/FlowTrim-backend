@@ -19,6 +19,11 @@ public sealed class FlowTrimApiFactory : WebApplicationFactory<Program>
     /// <summary>Authority configurada; una prueba la deja vacía para verificar el fallo de arranque.</summary>
     public string Authority { get; init; } = "https://issuer.test/";
 
+    /// <summary>Origen permitido del frontend (reglas de producción: https exacto). Vacío = sin orígenes.</summary>
+    public string AllowedOrigin { get; init; } = TestFrontendOrigin;
+
+    public const string TestFrontendOrigin = "https://app.flowtrim.test";
+
     public InMemorySubscriptionRepository Subscriptions { get; } = new();
 
     public InMemoryUsageRecordRepository UsageRecords { get; } = new();
@@ -30,6 +35,10 @@ public sealed class FlowTrimApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("ConnectionStrings:FlowTrimDb", "Host=localhost;Database=unused");
         builder.UseSetting("Authentication:Authority", Authority);
         builder.UseSetting("Authentication:Audience", "flowtrim-api-tests");
+        if (!string.IsNullOrEmpty(AllowedOrigin))
+        {
+            builder.UseSetting("Cors:AllowedOrigins:0", AllowedOrigin);
+        }
 
         builder.ConfigureTestServices(services =>
         {
