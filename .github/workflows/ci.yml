@@ -1,0 +1,46 @@
+# CI del backend (HU-38): compila en Release y ejecuta todas las pruebas xUnit en cada PR y push a main.
+# No usa secretos: las pruebas HTTP usan autenticación falsa y repositorios en memoria.
+name: Backend CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Mínimo privilegio: el job solo necesita leer el código.
+permissions:
+  contents: read
+
+# Un push nuevo a la misma rama cancela la ejecución anterior.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: build-and-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore FlowTrim.slnx
+
+      - name: Build (Release)
+        run: dotnet build FlowTrim.slnx -c Release --no-restore
+
+      - name: Test
+        run: dotnet test FlowTrim.slnx -c Release --no-build --logger "console;verbosity=normal"
