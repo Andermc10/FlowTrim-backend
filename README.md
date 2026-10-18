@@ -240,10 +240,33 @@ exception page) so behavior is consistent.
 
 ## CORS
 
-Cross-origin requests are allowed only from the origins in `Cors:AllowedOrigins` (default
-`http://localhost:4200`, the Angular dev server) — never all origins. Override per environment via
-configuration, e.g. the `Cors__AllowedOrigins__0` environment variable. In Development, HTTPS
-redirection is disabled so the HTTP dev flow and CORS preflight work cleanly.
+Browsers may call the API only from the origins listed in `Cors:AllowedOrigins`. There is **no default
+in code**: Development sets `http://localhost:4200` in `appsettings.Development.json`; every other
+environment must set them explicitly (`Cors__AllowedOrigins__0`, `__1`, …).
+
+Outside Development the API refuses to start unless each origin is an exact `https://` origin (scheme and
+host, optional port — no path, trailing slash or `*`). The policy allows `GET, POST, PUT, DELETE`, the
+headers `Accept, Content-Type, Authorization`, and no cookies. Error messages name the setting, never its
+value. HTTPS redirection and HSTS are enabled outside Development.
+
+## Configuration reference
+
+Every setting the API reads. Development values come from `appsettings.Development.json` and User
+Secrets; deployments use environment variables (or the host's secret store). Placeholders only.
+
+| Setting | Environment variable | Required | Secret | Example |
+|---|---|---|---|---|
+| `ConnectionStrings:FlowTrimDb` | `ConnectionStrings__FlowTrimDb` | Always | **Yes** | `Host=<host>;Port=5432;Database=flowtrim;Username=<user>;Password=<password>` |
+| `Authentication:Authority` | `Authentication__Authority` | Always | No | `https://<tenant>.<region>.auth0.com/` |
+| `Authentication:Audience` | `Authentication__Audience` | Always | No | `https://api.flowtrim.dev` |
+| `Authentication:RequireHttpsMetadata` | `Authentication__RequireHttpsMetadata` | No (default `true`) | No | `true` |
+| `Cors:AllowedOrigins` | `Cors__AllowedOrigins__0` (`__1`, …) | Outside Development | No | `https://<frontend-host>` |
+| `AllowedHosts` | `AllowedHosts` | No (default `*`) | No | `<api-host>` |
+| `ASPNETCORE_ENVIRONMENT` | `ASPNETCORE_ENVIRONMENT` | Deployments | No | `Production` |
+
+Production logging (`appsettings.json`): `Default=Information`, `Microsoft.AspNetCore`,
+`Microsoft.EntityFrameworkCore` and `Npgsql` at `Warning`, so SQL text is never written to production logs.
+Development keeps SQL command logs at `Information` for learning and debugging.
 
 ## Known limitations
 
