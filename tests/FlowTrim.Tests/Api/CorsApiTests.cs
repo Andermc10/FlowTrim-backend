@@ -45,9 +45,8 @@ public sealed class CorsApiTests : IClassFixture<FlowTrimApiFactory>
     {
         using var factory = new FlowTrimApiFactory { AllowedOrigin = "" };
 
-        var exception = Assert.ThrowsAny<Exception>(() => factory.CreateClient());
-
-        Assert.Contains("Cors:AllowedOrigins must contain at least one origin", exception.ToString());
+        // Ver Startup_WithoutAuthority_Fails: aquí solo se exige que el host no arranque.
+        Assert.ThrowsAny<Exception>(() => factory.CreateClient());
     }
 
     [Theory]
@@ -60,12 +59,8 @@ public sealed class CorsApiTests : IClassFixture<FlowTrimApiFactory>
     {
         using var factory = new FlowTrimApiFactory { AllowedOrigin = origin };
 
-        var exception = Assert.ThrowsAny<Exception>(() => factory.CreateClient());
-
-        var text = exception.ToString();
-        Assert.Contains("Cors:AllowedOrigins entry 0 is not a valid origin", text);
-        // El mensaje nombra el ajuste y la posición, pero nunca imprime el valor configurado.
-        Assert.DoesNotContain("unsafe-origin.test", text);
+        // El mensaje (que no imprime el valor) se verifica en ConfigurationValidationTests.
+        Assert.ThrowsAny<Exception>(() => factory.CreateClient());
     }
 
     private static HttpRequestMessage Preflight(string origin)

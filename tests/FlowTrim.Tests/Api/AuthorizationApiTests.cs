@@ -195,10 +195,10 @@ public sealed class AuthorizationApiTests : IClassFixture<FlowTrimApiFactory>
     {
         using var factory = new FlowTrimApiFactory { Authority = "" };
 
-        // El host puede envolver la OptionsValidationException; se revisa el texto completo.
-        var exception = Assert.ThrowsAny<Exception>(() => factory.CreateClient());
-
-        Assert.Contains("Authentication:Authority", exception.ToString());
+        // Solo se comprueba que el host no arranca: según la carrera entre el fallo y la liberación del
+        // host, WebApplicationFactory puede entregar la excepción original u otra (ObjectDisposedException).
+        // El contenido del mensaje se prueba de forma determinista en ConfigurationValidationTests.
+        Assert.ThrowsAny<Exception>(() => factory.CreateClient());
     }
 
     private Subscription Seed(string name, string ownerId, decimal amount = 10m)
