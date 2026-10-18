@@ -12,7 +12,8 @@ namespace FlowTrim.Tests.Api;
 
 /// <summary>
 /// Levanta la API real en memoria con autenticación falsa y repositorios en memoria. No necesita base de
-/// datos ni tokens reales; la validación contra PostgreSQL real pertenece a HU-47.
+/// datos ni tokens reales. Con <see cref="DatabaseConnectionString"/> usa en cambio la infraestructura real
+/// contra el PostgreSQL desechable de las pruebas de integración (HU-47); la autenticación siempre es falsa.
 /// </summary>
 public sealed class FlowTrimApiFactory : WebApplicationFactory<Program>
 {
@@ -24,6 +25,11 @@ public sealed class FlowTrimApiFactory : WebApplicationFactory<Program>
 
     public const string TestFrontendOrigin = "https://app.flowtrim.test";
 
+    /// <summary>
+    /// Cadena de conexión de un PostgreSQL real. Nula = repositorios y health check en memoria.
+    /// </summary>
+    public string? DatabaseConnectionString { get; init; }
+
     public InMemorySubscriptionRepository Subscriptions { get; } = new();
 
     public InMemoryUsageRecordRepository UsageRecords { get; } = new();
@@ -32,7 +38,7 @@ public sealed class FlowTrimApiFactory : WebApplicationFactory<Program>
     {
         // Entorno propio: no carga User Secrets ni appsettings.Development.json del desarrollador.
         builder.UseEnvironment("Testing");
-        builder.UseSetting("ConnectionStrings:FlowTrimDb", "Host=localhost;Database=unused");
+        builder.UseSetting("ConnectionStrings:FlowTrimDb", DatabaseConnectionString ?? "Host=localhost;Database=unused");
         builder.UseSetting("Authentication:Authority", Authority);
         builder.UseSetting("Authentication:Audience", "flowtrim-api-tests");
         if (!string.IsNullOrEmpty(AllowedOrigin))
@@ -45,6 +51,11 @@ public sealed class FlowTrimApiFactory : WebApplicationFactory<Program>
             services.AddAuthentication(TestAuthenticationHandler.SchemeName)
                 .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>(
                     TestAuthenticationHandler.SchemeName, _ => { });
+
+            if (DatabaseConnectionString is not null)
+            {
+                return;
+            }
 
             services.AddSingleton<ISubscriptionRepository>(Subscriptions);
             services.AddSingleton<IUsageRecordRepository>(UsageRecords);
