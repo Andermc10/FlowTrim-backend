@@ -1,4 +1,5 @@
 using FlowTrim.Api.Authentication;
+using FlowTrim.Api.Cors;
 using FlowTrim.Application;
 using FlowTrim.Application.Abstractions;
 using FlowTrim.Application.Health;
@@ -9,6 +10,7 @@ using FlowTrim.Application.Usage;
 using FlowTrim.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
@@ -66,17 +68,21 @@ builder.Services.AddApplication();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<FlowTrim.Api.GlobalExceptionHandler>();
 
-// CORS: solo los orígenes configurados (por defecto el dev de Angular). Nunca se abre a todos.
-const string corsPolicyName = "AllowAngularDev";
-string[] allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-    ?? ["http://localhost:4200"];
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy(corsPolicyName, policy =>
-        policy.WithOrigins(allowedOrigins)
-            .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-            .WithHeaders("Accept", "Content-Type", "Authorization"));
-});
+// CORS: solo los orígenes configurados, validados al arrancar. Sin valor por defecto en el código:
+// desarrollo lo define en appsettings.Development.json y producción por variables de entorno.
+builder.Services.AddOptions<AllowedOriginsOptions>()
+    .Bind(builder.Configuration.GetSection(AllowedOriginsOptions.SectionName))
+    .ValidateOnStart();
+builder.Services.AddSingleton<IValidateOptions<AllowedOriginsOptions>, AllowedOriginsValidator>();
+
+builder.Services.AddCors();
+builder.Services.AddOptions<CorsOptions>()
+    .Configure<IOptions<AllowedOriginsOptions>>((cors, allowed) =>
+        cors.AddPolicy(AllowedOriginsOptions.PolicyName, policy =>
+            policy.WithOrigins(allowed.Value.AllowedOrigins)
+                .WithMethods("GET", "POST", "PUT", "DELETE")
+                // El token viaja en la cabecera Authorization; no se permiten cookies (sin AllowCredentials).
+                .WithHeaders("Accept", "Content-Type", "Authorization")));
 
 var app = builder.Build();
 
@@ -90,12 +96,14 @@ if (app.Environment.IsDevelopment())
 }
 
 // En desarrollo trabajamos sobre HTTP para que el preflight CORS no se redirija entre esquemas.
+// Fuera de desarrollo: HSTS indica al navegador que use siempre HTTPS con este host.
 if (!app.Environment.IsDevelopment())
 {
+    app.UseHsts();
     app.UseHttpsRedirection();
 }
 
-app.UseCors(corsPolicyName);
+app.UseCors(AllowedOriginsOptions.PolicyName);
 app.UseAuthentication();
 app.UseAuthorization();
 
