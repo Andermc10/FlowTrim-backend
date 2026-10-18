@@ -160,6 +160,22 @@ Tests include HTTP integration tests (`tests/FlowTrim.Tests/Api`) that host the 
 `WebApplicationFactory`, a fake authentication scheme and in-memory repositories (no database, no real
 tokens), covering `401`/`403`, owner isolation on every private route and fail-fast configuration.
 
+### Database integration tests (PostgreSQL)
+
+`tests/FlowTrim.Tests/Integration` runs against a **real, disposable PostgreSQL** started by
+[Testcontainers](https://dotnet.testcontainers.org/) (`postgres:17-alpine`): one container per test run,
+the real EF Core migrations applied on start, tables truncated before each test, container removed at the
+end. It never touches your local `flowtrim` database and needs no credentials (Testcontainers generates
+them; authentication uses the fake test scheme).
+
+They cover the migrated schema and constraints, `HasPendingModelChanges()`, the real repositories (owner
+filters, ordering, paging, date ranges, decimal/date round-trips) and the API end to end over the database.
+
+- **Requirement:** Docker running (Docker Desktop locally; GitHub-hosted runners already have it).
+- **Without Docker:** run only the fast tests with `dotnet test FlowTrim.slnx --filter "Category!=Integration"`.
+- **First run** downloads the PostgreSQL image and Testcontainers' `ryuk` cleanup image. If Docker Desktop
+  reports `No such image: testcontainers/ryuk…`, pull it once with `docker pull testcontainers/ryuk:0.14.0`.
+
 ## Health check
 
 `GET /api/health` reports API and database availability:
