@@ -22,6 +22,8 @@ Status legend: **OPEN** (not addressed) · **PLANNED** (scheduled) · **RESOLVED
   (a) pin a patched `Microsoft.OpenApi` version via a direct `PackageReference`, or
   (b) drop the transitive package if the template feature that brings it is not needed.
 - **Owner decision:** Ander approved deferring on 2026-10-14.
+- **Note (2026-10-18, HU-38):** the warning also appears in the CI log; warnings do not fail the
+  build, so CI stays green. Still OPEN.
 
 ---
 
