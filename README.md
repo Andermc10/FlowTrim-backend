@@ -265,6 +265,21 @@ host, optional port — no path, trailing slash or `*`). The policy allows `GET,
 headers `Accept, Content-Type, Authorization`, and no cookies. Error messages name the setting, never its
 value. HTTPS redirection and HSTS are enabled outside Development.
 
+## Logs and correlation
+
+Every request gets a **correlation id**: the caller's `X-Correlation-ID` header when it is safe
+(1–64 chars of `A-Z a-z 0-9 . _ -`), otherwise a new 32-character hex id. It is returned in the
+`X-Correlation-ID` response header (exposed to the browser through CORS), included as `correlationId` in
+every `ProblemDetails` error body, and attached as the `CorrelationId` scope to every log line of the request.
+
+Each request writes one line: `HTTP {Method} {Route} responded {StatusCode} in {ElapsedMs} ms`, using the
+route template (e.g. `/api/subscriptions/{id:guid}`) and never the query string; `/api/health` logs at
+`Debug`. Outside Development logs are JSON (one object per line, UTC); Development uses the readable console.
+
+Never logged: `Authorization` header or tokens, cookies, request/response bodies, query strings, connection
+strings, the user's `sub`, subscription names or amounts. To trace a failure, search the logs for the
+reference shown to the user (see the tracker's `docs/OPERATIONS.md`).
+
 ## Configuration reference
 
 Every setting the API reads. Development values come from `appsettings.Development.json` and User

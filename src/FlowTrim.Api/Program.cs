@@ -1,5 +1,6 @@
 using FlowTrim.Api.Authentication;
 using FlowTrim.Api.Cors;
+using FlowTrim.Api.Observability;
 using FlowTrim.Application;
 using FlowTrim.Application.Abstractions;
 using FlowTrim.Application.Health;
@@ -15,6 +16,23 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Logs: fuera de desarrollo, una línea JSON por evento (UTC, con scopes como CorrelationId) para poder
+// filtrarlos por campo; en desarrollo, consola legible. Sin librerías externas.
+builder.Logging.ClearProviders();
+if (builder.Environment.IsDevelopment())
+{
+    builder.Logging.AddSimpleConsole(options => options.IncludeScopes = true);
+}
+else
+{
+    builder.Logging.AddJsonConsole(options =>
+    {
+        options.IncludeScopes = true;
+        options.UseUtcTimestamp = true;
+        options.TimestampFormat = "yyyy-MM-ddTHH:mm:ss.fffZ";
+    });
+}
 
 // Documentación OpenAPI (solo se expone en desarrollo más abajo).
 builder.Services.AddOpenApi();
@@ -65,7 +83,13 @@ builder.Services.AddInfrastructure(connectionString);
 builder.Services.AddApplication();
 
 // Manejo centralizado de errores: ProblemDetails consistente + handler global.
-builder.Services.AddProblemDetails();
+builder.Services.AddProblemDetails(options =>
+    options.CustomizeProblemDetails = context =>
+    {
+        // Un único identificador visible para el cliente: el mismo de la cabecera X-Correlation-ID.
+        context.ProblemDetails.Extensions.Remove("traceId");
+        context.ProblemDetails.Extensions["correlationId"] = context.HttpContext.TraceIdentifier;
+    });
 builder.Services.AddExceptionHandler<FlowTrim.Api.GlobalExceptionHandler>();
 
 // CORS: solo los orígenes configurados, validados al arrancar. Sin valor por defecto en el código:
@@ -82,11 +106,16 @@ builder.Services.AddOptions<CorsOptions>()
             policy.WithOrigins(allowed.Value.AllowedOrigins)
                 .WithMethods("GET", "POST", "PUT", "DELETE")
                 // El token viaja en la cabecera Authorization; no se permiten cookies (sin AllowCredentials).
-                .WithHeaders("Accept", "Content-Type", "Authorization")));
+                .WithHeaders("Accept", "Content-Type", "Authorization")
+                // El navegador solo deja leer cabeceras expuestas: Angular muestra la referencia del error.
+                .WithExposedHeaders(CorrelationIdMiddleware.HeaderName)));
 
 var app = builder.Build();
 
-// El manejador de excepciones va primero para capturar cualquier fallo del pipeline.
+// La correlación va primero: así el scope y la cabecera también cubren los errores 500.
+app.UseMiddleware<CorrelationIdMiddleware>();
+
+// El manejador de excepciones va justo después para capturar cualquier fallo del pipeline.
 app.UseExceptionHandler();
 
 // Configuración del pipeline HTTP.
