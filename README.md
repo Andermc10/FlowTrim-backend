@@ -1,5 +1,7 @@
 # FlowTrim-backend
 
+[![Backend CI](https://github.com/Andermc10/FlowTrim-backend/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Andermc10/FlowTrim-backend/actions/workflows/ci.yml)
+
 C# / ASP.NET Core Web API for **FlowTrim** — a deterministic, transparent engine to track recurring
 subscriptions, compute monthly-equivalent and annual spending, warn about upcoming renewals, and
 simulate cancellation savings. Built on .NET 10 with a layered architecture.
@@ -149,6 +151,10 @@ dotnet ef database update --project src/FlowTrim.Infrastructure --startup-projec
 dotnet build FlowTrim.slnx
 dotnet test FlowTrim.slnx
 ```
+
+**Continuous integration:** `.github/workflows/ci.yml` runs restore, Release build and all tests on every
+pull request to `main` and every push to `main`. It needs no secrets (no Auth0, no database). `main` is
+protected: a pull request cannot be merged while the `build-and-test` check is failing.
 
 Tests include HTTP integration tests (`tests/FlowTrim.Tests/Api`) that host the real API with
 `WebApplicationFactory`, a fake authentication scheme and in-memory repositories (no database, no real
