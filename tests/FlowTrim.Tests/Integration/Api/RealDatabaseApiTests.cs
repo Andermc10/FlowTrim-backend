@@ -95,6 +95,21 @@ public sealed class RealDatabaseApiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Analytics_RealDatabase_MatchesSummaryMonthlyTotal()
+    {
+        var a = _factory.CreateClientFor(OwnerA);
+        await CreateAsync(a, "Netflix A", 38900m);
+        await CreateAsync(a, "Spotify A", 16900m);
+
+        var summary = await GetJsonAsync(a, "/api/summary");
+        var analytics = await GetJsonAsync(a, "/api/analytics");
+
+        var cop = analytics.GetProperty("currencies")[0];
+        Assert.Equal(MonthlyEquivalent(summary), cop.GetProperty("monthlyTotal").GetDecimal());
+        Assert.Equal(2, cop.GetProperty("topSubscriptions").GetArrayLength());
+    }
+
+    [Fact]
     public async Task PrivateRoute_WithoutToken_ReturnsUnauthorized_RealDatabase()
     {
         var response = await _factory.CreateClient().GetAsync("/api/subscriptions");

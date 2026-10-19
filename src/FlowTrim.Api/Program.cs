@@ -2,6 +2,7 @@ using FlowTrim.Api.Authentication;
 using FlowTrim.Api.Cors;
 using FlowTrim.Api.Observability;
 using FlowTrim.Application;
+using FlowTrim.Application.Analytics;
 using FlowTrim.Application.Abstractions;
 using FlowTrim.Application.Health;
 using FlowTrim.Application.Simulations;
@@ -315,6 +316,21 @@ app.MapPost("/api/simulations", async (
 })
 .RequireAuthorization()
 .WithName("Simulate");
+
+// Analítica por moneda (HU-50): gasto por categoría, más caras y cobros esperados por mes. 200 / 400 / 401.
+app.MapGet("/api/analytics", async (
+    IGetAnalyticsHandler handler,
+    CancellationToken cancellationToken,
+    int? months) =>
+{
+    AnalyticsResult result = await handler.HandleAsync(months, cancellationToken);
+
+    return result.IsSuccess
+        ? Results.Ok(result.Value)
+        : Results.ValidationProblem(result.Errors);
+})
+.RequireAuthorization()
+.WithName("GetAnalytics");
 
 app.Run();
 
