@@ -26,7 +26,11 @@ public sealed class UpcomingChargesTool(IGetUpcomingChargesHandler handler) : Fi
 
         // Los vencidos tienen días negativos, así que siempre entran en la ventana.
         var inWindow = upcoming.Items.Where(item => item.DaysUntilCharge <= withinDays).ToList();
-        var charges = inWindow.Take(MaxItems).Select(item => new
+        var listed = inWindow.Take(MaxItems).ToList();
+        var figures = listed.Select(item => new InsightFigure(
+            InsightFigureKinds.UpcomingCharge, "Expected charge", $"{item.Name} · {item.NextBillingDate:yyyy-MM-dd}", item.Amount, item.Currency))
+            .ToList();
+        var charges = listed.Select(item => new
         {
             item.Name,
             item.Amount,
@@ -40,6 +44,6 @@ public sealed class UpcomingChargesTool(IGetUpcomingChargesHandler handler) : Fi
         return Ok(
             new { upcoming.ReferenceDate, withinDays, totalCount = inWindow.Count, charges },
             [ToolAssumptions.Expected, ToolAssumptions.ActiveOnly],
-            "upcoming-charges");
+            "upcoming-charges") with { Figures = figures };
     }
 }

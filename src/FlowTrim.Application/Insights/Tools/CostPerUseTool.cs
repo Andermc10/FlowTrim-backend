@@ -76,7 +76,21 @@ public sealed class CostPerUseTool(
         };
         string[] assumptions = [ToolAssumptions.DeclaredUsage, ToolAssumptions.Expected];
 
-        return new ToolResult(Name, costPerUse.Calculable ? ToolStatus.Ok : ToolStatus.NotCalculable, data, assumptions, Sources);
+        var subject = matches[0].Name;
+        List<InsightFigure> figures =
+        [
+            new(InsightFigureKinds.PeriodCost, "Cost in the period", subject, costPerUse.TotalPaid, costPerUse.Currency),
+            new(InsightFigureKinds.DeclaredUses, "Declared uses", subject, costPerUse.TotalUses, null),
+        ];
+        if (costPerUse is { Calculable: true, CostPerUse: { } value })
+        {
+            figures.Add(new(InsightFigureKinds.CostPerUse, "Cost per use", subject, value, costPerUse.Currency));
+        }
+
+        return new ToolResult(Name, costPerUse.Calculable ? ToolStatus.Ok : ToolStatus.NotCalculable, data, assumptions, Sources)
+        {
+            Figures = figures,
+        };
     }
 
     private ToolResult NotFound(string name) =>

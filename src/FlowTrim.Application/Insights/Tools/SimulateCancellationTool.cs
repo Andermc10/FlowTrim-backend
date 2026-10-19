@@ -49,6 +49,18 @@ public sealed class SimulateCancellationTool(
         }
 
         var simulation = result.Value!;
+        // Sin coincidencias no hay ahorro que mostrar: los ceros no son evidencia útil.
+        var figures = matched.Count == 0
+            ? []
+            : simulation.Currencies
+                .Where(currency => currency.SelectedMonthly > 0)
+                .SelectMany(currency => currency.Savings
+                    .Select(saving => new InsightFigure(
+                        InsightFigureKinds.Savings, "Potential savings", $"{saving.Months} months", saving.Amount, currency.Currency))
+                    .Prepend(new InsightFigure(
+                        InsightFigureKinds.SelectedMonthly, "Selected monthly spending", null, currency.SelectedMonthly, currency.Currency)))
+                .ToList();
+
         return Ok(
             new
             {
@@ -58,6 +70,6 @@ public sealed class SimulateCancellationTool(
                 simulation.Currencies,
             },
             [ToolAssumptions.NothingCancelled, ToolAssumptions.ConstantPrices, ToolAssumptions.ActiveOnly, ToolAssumptions.NoConversion],
-            "simulator");
+            "simulator") with { Figures = figures };
     }
 }
