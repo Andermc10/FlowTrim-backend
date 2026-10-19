@@ -56,7 +56,7 @@ public sealed class SimulateCancellationTool(
                 .Where(currency => currency.SelectedMonthly > 0)
                 .SelectMany(currency => currency.Savings
                     .Select(saving => new InsightFigure(
-                        InsightFigureKinds.Savings, "Potential savings", $"{saving.Months} months", saving.Amount, currency.Currency))
+                        InsightFigureKinds.Savings, "Potential savings", null, saving.Amount, currency.Currency, Months: saving.Months))
                     .Prepend(new InsightFigure(
                         InsightFigureKinds.SelectedMonthly, "Selected monthly spending", null, currency.SelectedMonthly, currency.Currency)))
                 .ToList();
