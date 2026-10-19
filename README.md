@@ -246,6 +246,12 @@ the current/selected/projected monthly equivalent and the potential savings over
 (default `1, 12, 24` months). It **persists nothing**; `400` on a non-positive horizon. The response
 carries the assumptions (constant prices, no penalties/taxes, not guaranteed).
 
+`GET /api/analytics?months=12` (`months` 1–24) returns, **per currency** of the owner's active subscriptions:
+the monthly total, spending by category (with share %, missing category = `Uncategorized`), the top 5
+subscriptions and the **expected charges per calendar month** from the current month (America/Bogota):
+monthly plans every month from their billing month, yearly plans only in their billing month and every 12
+months. These are expected charges from user-entered data, not confirmed payments; there is no charge history.
+
 ## Errors
 
 A global exception handler returns RFC 7807 `ProblemDetails` consistently: `400`
