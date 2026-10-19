@@ -44,6 +44,8 @@ public sealed class AnswerQuestionHandlerTests
         var first = model.Requests[0];
         Assert.Equal(ChatRole.System, first.Messages[0].Role);
         Assert.Equal(AnswerQuestionHandler.SystemPrompt, first.Messages[0].Content);
+        // La UI muestra la respuesta como texto plano (HU-36): el prompt pide no usar Markdown.
+        Assert.Contains("plain text: no Markdown", AnswerQuestionHandler.SystemPrompt);
         Assert.Equal("How much do I spend per month?", first.Messages[1].Content);
         Assert.Equal(5, first.Tools!.Count);
         var toolMessage = Assert.Single(model.Requests[1].Messages, m => m.Role == ChatRole.Tool);

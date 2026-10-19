@@ -63,16 +63,20 @@ public sealed class FlowTrimApiFactory : WebApplicationFactory<Program>
         });
     }
 
-    /// <summary>Cliente HTTP autenticado como el subject indicado.</summary>
-    public HttpClient CreateClientFor(string subject)
-    {
-        var client = CreateClient();
-        client.DefaultRequestHeaders.Add(TestAuthenticationHandler.SubjectHeader, subject);
-        return client;
-    }
-
     private sealed class HealthyDatabaseChecker : IDatabaseHealthChecker
     {
         public Task<bool> CanConnectAsync(CancellationToken cancellationToken) => Task.FromResult(true);
+    }
+}
+
+/// <summary>Clientes autenticados para la factoría base y para las derivadas con <c>WithWebHostBuilder</c>.</summary>
+public static class ApiClientExtensions
+{
+    /// <summary>Cliente HTTP autenticado como el subject indicado.</summary>
+    public static HttpClient CreateClientFor(this WebApplicationFactory<Program> factory, string subject)
+    {
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Add(TestAuthenticationHandler.SubjectHeader, subject);
+        return client;
     }
 }

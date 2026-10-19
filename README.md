@@ -344,6 +344,24 @@ signed-in owner — at most 2 tool rounds and 3 model calls per question — and
 - Provider problems: `504` (`insights_timeout`), `429` (`insights_rate_limited`), `502` (`insights_unavailable`).
 - Nothing is stored; logs record status, tools, model calls, tokens and duration only.
 
+### Privacy and data sent to the AI provider (HU-37)
+
+| Sent to the provider (per question) | Never sent |
+|---|---|
+| The fixed system prompt and the user's question | Subscription and usage-record ids |
+| The definitions of the five tools (names, descriptions, JSON Schemas) | The owner `sub`, e-mail or any account data |
+| Tool results for the signed-in owner only: subscription names, categories, amounts, currencies, billing cycles, dates, days until charge, declared usage counts, assumptions and sources | The bearer token, the provider key in any message body, connection strings |
+
+- **Not stored:** questions, answers and tool results live only in memory for the request.
+- **Logs:** metrics only (status, tools, model calls, tokens, duration, provider outcome); never the question, the
+  answer, tool data or the key. Errors carry a correlation id instead of details.
+- **Provider retention:** free tiers may keep prompts for abuse monitoring or training. Use demo data only; do not
+  enable a real provider for private financial data until a paid tier with a no-retention policy is configured.
+- **Authority of numbers:** `figures` come from the deterministic tools. The model's `answer` is an explanation and is
+  not verified against them, so the UI presents the figures as "calculated by FlowTrim".
+- Tests that pin this boundary: `InsightsVerificationMatrixTests` (figures equal the deterministic endpoints, no ids,
+  owner or token in model requests, exact response shape) and `Question_Logs_DoNotContainQuestionOrAnswer`.
+
 ## Configuration reference
 
 Every setting the API reads. Development values come from `appsettings.Development.json` and User
