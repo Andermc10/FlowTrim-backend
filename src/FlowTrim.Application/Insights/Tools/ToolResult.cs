@@ -61,6 +61,8 @@ public sealed record ToolResult(
     [JsonIgnore]
     public IReadOnlyList<InsightFigure> Figures { get; init; } = [];
 
+    // Ayuda para el código C#; no se envía al modelo (el estado ya va en Status).
+    [JsonIgnore]
     public bool IsOk => Status == ToolStatus.Ok;
 
     public string ToJson() => JsonSerializer.Serialize(this, JsonOptions);

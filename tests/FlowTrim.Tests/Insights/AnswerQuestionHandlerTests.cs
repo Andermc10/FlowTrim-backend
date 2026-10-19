@@ -325,6 +325,7 @@ public sealed class AnswerQuestionHandlerTests
 
         Assert.NotEmpty(result.Figures);
         Assert.DoesNotContain("figures", result.ToJson(), StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("isOk", result.ToJson(), StringComparison.OrdinalIgnoreCase);
     }
 
     // ----- Helpers -----
