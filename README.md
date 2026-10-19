@@ -296,15 +296,17 @@ reference shown to the user (see the tracker's `docs/OPERATIONS.md`).
 The application talks to language models only through `IChatModel` (HU-33). Two implementations exist:
 
 - **`Fake`** (default) — deterministic and offline. Used by tests, CI and anyone who clones the repository; no key needed.
-- **`OpenAiCompatible`** — any `/chat/completions` endpoint in the OpenAI format (GitHub Models, OpenRouter, Groq,
+- **`OpenAiCompatible`** — any `/chat/completions` endpoint in the OpenAI format (Groq, OpenRouter,
   Gemini's compatible endpoint). Switching provider is a configuration change.
 
-To use GitHub Models locally, keep the token in User Secrets (never in `appsettings*.json`, which are versioned):
+The local setup uses **Groq**'s free tier (no card; at the time of writing 1,000 requests/day and 8,000 tokens/minute
+for `openai/gpt-oss-120b`; tool calling verified). GitHub Models, the first choice, was retired on 2026-07-30.
+Create a key at console.groq.com and keep it in User Secrets (never in `appsettings*.json`, which are versioned):
 
 ```bash
 dotnet user-secrets set "Insights:Provider:Kind" "OpenAiCompatible" --project src/FlowTrim.Api
-dotnet user-secrets set "Insights:Provider:BaseUrl" "https://models.github.ai/inference" --project src/FlowTrim.Api
-dotnet user-secrets set "Insights:Provider:Model" "openai/gpt-4o-mini" --project src/FlowTrim.Api
+dotnet user-secrets set "Insights:Provider:BaseUrl" "https://api.groq.com/openai/v1" --project src/FlowTrim.Api
+dotnet user-secrets set "Insights:Provider:Model" "openai/gpt-oss-120b" --project src/FlowTrim.Api
 dotnet user-secrets set "Insights:Provider:ApiKey" "<your-token>" --project src/FlowTrim.Api
 ```
 
@@ -327,8 +329,8 @@ Secrets; deployments use environment variables (or the host's secret store). Pla
 | `AllowedHosts` | `AllowedHosts` | No (default `*`) | No | `<api-host>` |
 | `ASPNETCORE_ENVIRONMENT` | `ASPNETCORE_ENVIRONMENT` | Deployments | No | `Production` |
 | `Insights:Provider:Kind` | `Insights__Provider__Kind` | No (default `Fake`) | No | `Fake` or `OpenAiCompatible` |
-| `Insights:Provider:BaseUrl` | `Insights__Provider__BaseUrl` | With `OpenAiCompatible` | No | `https://models.github.ai/inference` |
-| `Insights:Provider:Model` | `Insights__Provider__Model` | With `OpenAiCompatible` | No | `openai/gpt-4o-mini` |
+| `Insights:Provider:BaseUrl` | `Insights__Provider__BaseUrl` | With `OpenAiCompatible` | No | `https://api.groq.com/openai/v1` |
+| `Insights:Provider:Model` | `Insights__Provider__Model` | With `OpenAiCompatible` | No | `openai/gpt-oss-120b` |
 | `Insights:Provider:ApiKey` | `Insights__Provider__ApiKey` | With `OpenAiCompatible` | **Yes** | `<provider-token>` |
 | `Insights:Provider:TimeoutSeconds` / `MaxOutputTokens` / `MaxInputCharacters` | `Insights__Provider__…` | No (20 / 400 / 12000) | No | `20` |
 
