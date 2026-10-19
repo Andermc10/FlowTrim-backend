@@ -39,6 +39,13 @@ internal sealed class SubscriptionRepository : ISubscriptionRepository
             .Where(s => s.OwnerId == ownerId && s.Status == SubscriptionStatus.Active)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<Subscription>> ListAllAsync(string ownerId, CancellationToken cancellationToken) =>
+        await _dbContext.Subscriptions
+            .Where(s => s.OwnerId == ownerId)
+            .OrderBy(s => s.Name)
+            .ThenBy(s => s.Id)
+            .ToListAsync(cancellationToken);
+
     public async Task UpdateAsync(Subscription subscription, CancellationToken cancellationToken)
     {
         _dbContext.Subscriptions.Update(subscription);
