@@ -77,7 +77,7 @@ public sealed class InsightsApiTests : IClassFixture<FlowTrimApiFactory>
         var model = new ScriptedChatModel();
         using var factory = WithModel(model);
 
-        var response = await ClientFor(factory, NewOwner()).PostAsJsonAsync(Route, new { question = new string('a', 501) });
+        var response = await factory.CreateClientFor(NewOwner()).PostAsJsonAsync(Route, new { question = new string('a', 501) });
 
         await AssertValidationProblemAsync(response);
         Assert.Empty(model.Requests);
@@ -115,7 +115,7 @@ public sealed class InsightsApiTests : IClassFixture<FlowTrimApiFactory>
             new ChatCompletion("Not found.", [], "stop", new ChatUsage(1, 1)));
         using var factory = WithModel(model);
 
-        var response = await ClientFor(factory, ownerA).PostAsJsonAsync(Route, new { question = "Cancel Gym?" });
+        var response = await factory.CreateClientFor(ownerA).PostAsJsonAsync(Route, new { question = "Cancel Gym?" });
         var text = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -139,7 +139,7 @@ public sealed class InsightsApiTests : IClassFixture<FlowTrimApiFactory>
         using var factory = WithModel(new ScriptedChatModel(_ =>
             throw new ChatModelException(kind, TimeSpan.FromSeconds(7.2), new HttpRequestException(secret))));
 
-        var response = await ClientFor(factory, NewOwner()).PostAsJsonAsync(Route, new { question = "How much do I spend?" });
+        var response = await factory.CreateClientFor(NewOwner()).PostAsJsonAsync(Route, new { question = "How much do I spend?" });
         var text = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(expectedStatus, response.StatusCode);
@@ -164,7 +164,7 @@ public sealed class InsightsApiTests : IClassFixture<FlowTrimApiFactory>
             builder.ConfigureTestServices(services => services.AddSingleton<IChatModel>(new HangingChatModel()));
         });
 
-        var response = await ClientFor(factory, NewOwner()).PostAsJsonAsync(Route, new { question = "How much do I spend?" });
+        var response = await factory.CreateClientFor(NewOwner()).PostAsJsonAsync(Route, new { question = "How much do I spend?" });
 
         Assert.Equal(HttpStatusCode.GatewayTimeout, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -183,7 +183,7 @@ public sealed class InsightsApiTests : IClassFixture<FlowTrimApiFactory>
         using var abort = new CancellationTokenSource(TimeSpan.FromMilliseconds(300));
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            ClientFor(factory, NewOwner()).PostAsJsonAsync(Route, new { question = "How much do I spend?" }, abort.Token));
+            factory.CreateClientFor(NewOwner()).PostAsJsonAsync(Route, new { question = "How much do I spend?" }, abort.Token));
 
         // El servidor termina la petición después de que el cliente se va: se espera su línea de log. El middleware de
         // excepciones de ASP.NET Core responde 499 sin pasar por GlobalExceptionHandler (no es un 500).
@@ -235,7 +235,7 @@ public sealed class InsightsApiTests : IClassFixture<FlowTrimApiFactory>
                 new ChatCompletion(answer, [], "stop", new ChatUsage(300, 20)))));
         });
 
-        var response = await ClientFor(factory, owner).PostAsJsonAsync(Route, new { question });
+        var response = await factory.CreateClientFor(owner).PostAsJsonAsync(Route, new { question });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var all = logs.AllText();
@@ -277,13 +277,6 @@ public sealed class InsightsApiTests : IClassFixture<FlowTrimApiFactory>
     }
 
     // ----- Helpers -----
-
-    private static HttpClient ClientFor(WebApplicationFactory<Program> factory, string owner)
-    {
-        var client = factory.CreateClient();
-        client.DefaultRequestHeaders.Add(TestAuthenticationHandler.SubjectHeader, owner);
-        return client;
-    }
 
     private static string NewOwner() => $"auth0|insights-{Guid.NewGuid():N}";
 
