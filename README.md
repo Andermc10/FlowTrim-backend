@@ -20,6 +20,7 @@ banks, detect charges or verify usage — the user enters their own data. The An
 - Declared usage records and cost-per-use analysis for a selected or derived period.
 - Health check (API + database), consistent RFC 7807 errors, configurable CORS.
 - JWT/OIDC authentication with server-side owner isolation for private financial data.
+- FlowTrim Insights: short questions about your own data, answered from deterministic tool results (see below).
 
 ## Tech stack
 
@@ -314,6 +315,30 @@ Failures become controlled errors (`Timeout`, `RateLimited`, `Unauthorized`, `Un
 `InputTooLarge`); logs record provider, model, outcome, duration and token counts — never the key, questions or answers.
 Free tiers may retain prompts: use demo data only. The model only explains results of deterministic C# tools (EP-05).
 
+### Insights questions (HU-35)
+
+`POST /api/insights/questions` with `{ "question": "..." }` (1–500 characters, authenticated). The model may call the
+five read-only tools of HU-34 (summary, analytics, upcoming charges, cancellation simulation, cost per use) for the
+signed-in owner — at most 2 tool rounds and 3 model calls per question — and then explains the results.
+
+```json
+{
+  "status": "answered",
+  "answer": "If you cancel Netflix you could save 466,800 COP in 12 months...",
+  "figures": [{ "kind": "savings", "label": "Potential savings", "subject": "12 months", "value": 466800, "currency": "COP" }],
+  "assumptions": ["The simulation does not cancel anything and savings are not guaranteed."],
+  "sources": ["simulator"],
+  "toolsUsed": ["simulate_cancellation"]
+}
+```
+
+- `figures` are built by the backend from the tool results, never from the model's text.
+- `status`: `answered`, `no_data` (tools ran but found nothing), or `unsupported` (no tool was used: the model's
+  text is replaced by a fixed message so no invented number reaches the user).
+- Limits: 5 questions per minute per user (`429` + `Retry-After`) and a 45-second budget per question.
+- Provider problems: `504` (`insights_timeout`), `429` (`insights_rate_limited`), `502` (`insights_unavailable`).
+- Nothing is stored; logs record status, tools, model calls, tokens and duration only.
+
 ## Configuration reference
 
 Every setting the API reads. Development values come from `appsettings.Development.json` and User
@@ -333,6 +358,8 @@ Secrets; deployments use environment variables (or the host's secret store). Pla
 | `Insights:Provider:Model` | `Insights__Provider__Model` | With `OpenAiCompatible` | No | `openai/gpt-oss-120b` |
 | `Insights:Provider:ApiKey` | `Insights__Provider__ApiKey` | With `OpenAiCompatible` | **Yes** | `<provider-token>` |
 | `Insights:Provider:TimeoutSeconds` / `MaxOutputTokens` / `MaxInputCharacters` | `Insights__Provider__…` | No (20 / 400 / 12000) | No | `20` |
+| `Insights:RequestTimeoutSeconds` | `Insights__RequestTimeoutSeconds` | No (default 45, 5–120) | No | `45` |
+| `Insights:RateLimit:PermitLimit` / `WindowSeconds` | `Insights__RateLimit__…` | No (5 per 60 s; 1–100 / 10–3600) | No | `5` |
 
 Production logging (`appsettings.json`): `Default=Information`, `Microsoft.AspNetCore`,
 `Microsoft.EntityFrameworkCore` and `Npgsql` at `Warning`, so SQL text is never written to production logs.

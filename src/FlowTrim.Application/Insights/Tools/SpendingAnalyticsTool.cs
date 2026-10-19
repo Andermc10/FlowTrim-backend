@@ -35,9 +35,16 @@ public sealed class SpendingAnalyticsTool(IGetAnalyticsHandler handler) : Financ
             currency.ExpectedCharges,
         }).ToList();
 
+        var figures = analytics.Currencies.SelectMany(currency =>
+            currency.ByCategory
+                .Select(category => new InsightFigure(
+                    InsightFigureKinds.CategorySpend, "Category spending", category.Category, category.MonthlyEquivalent, currency.Currency))
+                .Prepend(new InsightFigure(InsightFigureKinds.MonthlyTotal, "Monthly total", null, currency.MonthlyTotal, currency.Currency)))
+            .ToList();
+
         return Ok(
             new { analytics.ReferenceMonth, months, currencies },
             [ToolAssumptions.Expected, ToolAssumptions.ConstantPrices, ToolAssumptions.ActiveOnly, ToolAssumptions.NoConversion],
-            "analytics");
+            "analytics") with { Figures = figures };
     }
 }

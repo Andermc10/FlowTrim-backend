@@ -15,9 +15,15 @@ public sealed class SpendingSummaryTool(IGetSummaryHandler handler) : FinancialT
     protected override async Task<ToolResult> RunAsync(ToolArguments arguments, CancellationToken cancellationToken)
     {
         var summary = await handler.HandleAsync(cancellationToken);
+        var figures = summary.Currencies.SelectMany(currency => new[]
+        {
+            new InsightFigure(InsightFigureKinds.MonthlyEquivalent, "Monthly equivalent", null, currency.MonthlyEquivalent, currency.Currency),
+            new InsightFigure(InsightFigureKinds.AnnualProjection, "Annual projection", null, currency.AnnualProjection, currency.Currency),
+        }).ToList();
+
         return Ok(
             new { currencies = summary.Currencies },
             [ToolAssumptions.Expected, ToolAssumptions.ConstantPrices, ToolAssumptions.ActiveOnly, ToolAssumptions.NoConversion],
-            "summary");
+            "summary") with { Figures = figures };
     }
 }

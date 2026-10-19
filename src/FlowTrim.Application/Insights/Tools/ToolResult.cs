@@ -41,6 +41,10 @@ public sealed record ToolResult(
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
 
+    /// <summary>Cifras tipadas para la evidencia de HU-35. No se envían al modelo (ya van en <see cref="Data"/>).</summary>
+    [JsonIgnore]
+    public IReadOnlyList<InsightFigure> Figures { get; init; } = [];
+
     public bool IsOk => Status == ToolStatus.Ok;
 
     public string ToJson() => JsonSerializer.Serialize(this, JsonOptions);

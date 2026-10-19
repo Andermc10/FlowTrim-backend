@@ -386,18 +386,7 @@ public sealed class FinancialToolsTests
 
     // ----- Helpers -----
 
-    private FinancialToolRegistry RegistryFor(string owner)
-    {
-        var user = new TestCurrentUser(owner);
-        return new FinancialToolRegistry(
-        [
-            new SpendingSummaryTool(new GetSummaryHandler(_subscriptions, user)),
-            new SpendingAnalyticsTool(new GetAnalyticsHandler(_subscriptions, _clock, user)),
-            new UpcomingChargesTool(new GetUpcomingChargesHandler(_subscriptions, _clock, user)),
-            new SimulateCancellationTool(new SimulateHandler(_subscriptions, user), _subscriptions, user),
-            new CostPerUseTool(new GetCostPerUseHandler(_subscriptions, _usage, user), _subscriptions, user),
-        ]);
-    }
+    private FinancialToolRegistry RegistryFor(string owner) => TestFinancialTools.Create(_subscriptions, _usage, _clock, owner);
 
     private async Task<JsonElement> RunAsync(string owner, string tool, string? arguments)
     {

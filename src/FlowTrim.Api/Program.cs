@@ -1,5 +1,6 @@
 using FlowTrim.Api.Authentication;
 using FlowTrim.Api.Cors;
+using FlowTrim.Api.Insights;
 using FlowTrim.Api.Observability;
 using FlowTrim.Application;
 using FlowTrim.Application.Analytics;
@@ -92,6 +93,9 @@ builder.Services.AddSingleton<IValidateOptions<ChatModelOptions>, ChatModelOptio
 builder.Services.AddChatModel();
 builder.Services.AddApplication();
 
+// Preguntas de Insights (HU-35): límites validados al arrancar y rate limit por propietario.
+builder.Services.AddInsightsEndpoints(builder.Configuration);
+
 // Manejo centralizado de errores: ProblemDetails consistente + handler global.
 builder.Services.AddProblemDetails(options =>
     options.CustomizeProblemDetails = context =>
@@ -123,7 +127,7 @@ builder.Services.AddOptions<CorsOptions>()
                 // El token viaja en la cabecera Authorization; no se permiten cookies (sin AllowCredentials).
                 .WithHeaders("Accept", "Content-Type", "Authorization")
                 // El navegador solo deja leer cabeceras expuestas: Angular muestra la referencia del error.
-                .WithExposedHeaders(CorrelationIdMiddleware.HeaderName)));
+                .WithExposedHeaders(CorrelationIdMiddleware.HeaderName, "Retry-After")));
 
 var app = builder.Build();
 
@@ -150,6 +154,8 @@ if (!app.Environment.IsDevelopment())
 app.UseCors(AllowedOriginsOptions.PolicyName);
 app.UseAuthentication();
 app.UseAuthorization();
+// Después de la autorización: el límite por propietario necesita el usuario autenticado.
+app.UseRateLimiter();
 
 // Comprueba disponibilidad de API y base de datos. Devuelve 200 si todo está bien; 503 si la BD no responde.
 // Nunca expone detalles internos del fallo.
@@ -356,6 +362,9 @@ app.MapGet("/api/reports/subscriptions.csv", async (
 })
 .RequireAuthorization()
 .WithName("ExportSubscriptionsCsv");
+
+// Preguntas acotadas sobre los datos del propietario (HU-35). 200 / 400 / 401 / 429 / 502 / 504.
+app.MapInsightsEndpoints();
 
 app.Run();
 
