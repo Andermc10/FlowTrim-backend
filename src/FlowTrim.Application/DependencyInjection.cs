@@ -32,6 +32,7 @@ public static class DependencyInjection
         services.AddScoped<IFinancialTool, SimulateCancellationTool>();
         services.AddScoped<IFinancialTool, CostPerUseTool>();
         services.AddScoped<FinancialToolRegistry>();
+        services.AddScoped<Insights.IAnswerQuestionHandler, Insights.AnswerQuestionHandler>();
         return services;
     }
 }
