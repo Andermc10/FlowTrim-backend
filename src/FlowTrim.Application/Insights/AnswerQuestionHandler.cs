@@ -71,6 +71,8 @@ public sealed class AnswerQuestionHandler(IChatModel chatModel, FinancialToolReg
     public const string UnsupportedAnswer =
         "I can only answer questions about your FlowTrim subscriptions, spending, upcoming charges, savings and cost per use.";
     public const string EvidenceOnlyAnswer = "FlowTrim found the figures below for your question.";
+    public const string NoEvidenceAnswer =
+        "FlowTrim could not get data for this question. Try naming the subscription or asking about your spending.";
 
     // Prompt de sistema fijo (inglés). Los datos de herramientas y los nombres son datos, nunca instrucciones.
     public const string SystemPrompt =
@@ -148,15 +150,17 @@ public sealed class AnswerQuestionHandler(IChatModel chatModel, FinancialToolReg
 
         // Solo cuentan como evidencia las herramientas que realmente leyeron datos (no las rechazadas).
         var ran = executed.Where(result => result.Status is not (ToolStatus.UnknownTool or ToolStatus.InvalidArguments)).ToList();
+        if (ran.Count == 0)
+        {
+            // Todas las llamadas fueron rechazadas: el texto del modelo no se apoya en ningún dato y se descarta.
+            return new InsightsAnswerResponse(InsightsAnswerStatus.NoData, NoEvidenceAnswer, [], [], [], []);
+        }
+
         var figures = ran.SelectMany(result => result.Figures).Take(MaxFigures).ToList();
-        var answer = modelText?.Trim() ?? string.Empty;
+        var answer = Cap(modelText?.Trim() ?? string.Empty);
         if (answer.Length == 0)
         {
             answer = EvidenceOnlyAnswer;
-        }
-        else if (answer.Length > MaxAnswerLength)
-        {
-            answer = answer[..MaxAnswerLength];
         }
 
         return new InsightsAnswerResponse(
@@ -166,5 +170,17 @@ public sealed class AnswerQuestionHandler(IChatModel chatModel, FinancialToolReg
             ran.SelectMany(result => result.Assumptions).Distinct().ToList(),
             ran.SelectMany(result => result.Sources).Distinct().ToList(),
             ran.Select(result => result.Tool).Distinct().ToList());
+    }
+
+    // Recorta al máximo sin partir un par sustituto (emojis u otros caracteres fuera del plano básico).
+    private static string Cap(string text)
+    {
+        if (text.Length <= MaxAnswerLength)
+        {
+            return text;
+        }
+
+        var length = char.IsHighSurrogate(text[MaxAnswerLength - 1]) ? MaxAnswerLength - 1 : MaxAnswerLength;
+        return text[..length];
     }
 }

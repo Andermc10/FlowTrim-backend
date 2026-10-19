@@ -22,6 +22,8 @@ public static class InsightsEndpoints
     public const string RateLimitedCode = "insights_rate_limited";
     public const string UnavailableCode = "insights_unavailable";
 
+    private const string TimeoutTitle = "The assistant took too long to answer. Try again.";
+
     public static IServiceCollection AddInsightsEndpoints(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddOptions<InsightsOptions>()
@@ -95,7 +97,7 @@ public static class InsightsEndpoints
         catch (OperationCanceledException) when (budget.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
         {
             logger.LogWarning("Insights question ran out of its {Seconds} s budget", options.Value.RequestTimeoutSeconds);
-            return Problem(StatusCodes.Status504GatewayTimeout, TimeoutCode, "The assistant took too long to answer. Try again.");
+            return Problem(StatusCodes.Status504GatewayTimeout, TimeoutCode, TimeoutTitle);
         }
         catch (ChatModelException exception)
         {
@@ -104,27 +106,24 @@ public static class InsightsEndpoints
                 : LogLevel.Warning;
             logger.Log(level, "Insights question failed with provider error {Kind}", exception.Kind);
 
+            if (exception is { Kind: ChatModelErrorKind.RateLimited, RetryAfter: { } wait })
+            {
+                httpContext.Response.Headers.RetryAfter = RetryAfterSeconds(wait);
+            }
+
             return exception.Kind switch
             {
-                ChatModelErrorKind.Timeout => Problem(StatusCodes.Status504GatewayTimeout, TimeoutCode,
-                    "The assistant took too long to answer. Try again."),
+                ChatModelErrorKind.Timeout => Problem(StatusCodes.Status504GatewayTimeout, TimeoutCode, TimeoutTitle),
                 ChatModelErrorKind.RateLimited => Problem(StatusCodes.Status429TooManyRequests, RateLimitedCode,
-                    "The assistant is busy right now. Wait a moment and try again.", exception.RetryAfter, httpContext),
+                    "The assistant is busy right now. Wait a moment and try again."),
                 _ => Problem(StatusCodes.Status502BadGateway, UnavailableCode,
                     "The assistant is not available right now. Try again later."),
             };
         }
     }
 
-    private static IResult Problem(int status, string code, string title, TimeSpan? retryAfter = null, HttpContext? httpContext = null)
-    {
-        if (retryAfter is { } wait && httpContext is not null)
-        {
-            httpContext.Response.Headers.RetryAfter = RetryAfterSeconds(wait);
-        }
-
-        return Results.Problem(statusCode: status, title: title, extensions: new Dictionary<string, object?> { ["code"] = code });
-    }
+    private static IResult Problem(int status, string code, string title) =>
+        Results.Problem(statusCode: status, title: title, extensions: new Dictionary<string, object?> { ["code"] = code });
 
     private static async Task WriteProblemAsync(HttpContext httpContext, int status, string code, string title, TimeSpan? retryAfter)
     {
