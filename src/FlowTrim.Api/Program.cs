@@ -94,6 +94,11 @@ builder.Services.AddProblemDetails(options =>
     });
 builder.Services.AddExceptionHandler<FlowTrim.Api.GlobalExceptionHandler>();
 
+// Peticiones ilegibles (JSON roto, tipos incorrectos): por defecto las minimal APIs lanzan la excepción solo en
+// desarrollo y fuera responden 400 sin cuerpo. Se lanza siempre para que el manejador global responda igual en
+// todos los entornos: 400 ProblemDetails con correlationId (backend#74).
+builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
+
 // CORS: solo los orígenes configurados, validados al arrancar. Sin valor por defecto en el código:
 // desarrollo lo define en appsettings.Development.json y producción por variables de entorno.
 builder.Services.AddOptions<AllowedOriginsOptions>()

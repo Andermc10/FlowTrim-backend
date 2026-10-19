@@ -46,6 +46,25 @@ internal sealed class GlobalExceptionHandler : IExceptionHandler
             });
         }
 
+        // Petición ilegible (JSON roto, UTF-8 inválido, tipos incorrectos): es un error del cliente, no un fallo
+        // del servidor. Se respeta su código (400, o 413 si el cuerpo es demasiado grande) sin exponer detalles.
+        if (exception is BadHttpRequestException badRequest)
+        {
+            _logger.LogWarning("Rejected unreadable request {Method} {Path} with {StatusCode}",
+                httpContext.Request.Method, httpContext.Request.Path, badRequest.StatusCode);
+
+            httpContext.Response.StatusCode = badRequest.StatusCode;
+            return await _problemDetailsService.TryWriteAsync(new ProblemDetailsContext
+            {
+                HttpContext = httpContext,
+                ProblemDetails = new ProblemDetails
+                {
+                    Status = badRequest.StatusCode,
+                    Title = "The request could not be read. Check the request body and try again.",
+                }
+            });
+        }
+
         // No se expone el detalle: se registra en el servidor y se devuelve un 500 genérico.
         _logger.LogError(exception, "Unhandled exception while processing {Method} {Path}",
             httpContext.Request.Method, httpContext.Request.Path);
