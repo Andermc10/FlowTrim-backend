@@ -36,7 +36,7 @@ public sealed class AnswerQuestionHandlerTests
         Assert.Equal(["get_spending_summary"], response.ToolsUsed);
         Assert.Contains(response.Figures, f => f is { Kind: InsightFigureKinds.MonthlyEquivalent, Value: 38900m, Currency: "COP" });
         Assert.Contains(response.Figures, f => f is { Kind: InsightFigureKinds.AnnualProjection, Value: 120m, Currency: "USD" });
-        Assert.Contains(ToolAssumptions.NoConversion, response.Assumptions);
+        Assert.Contains(new InsightAssumption("no_conversion", ToolAssumptions.NoConversion), response.Assumptions);
         Assert.Equal(["summary"], response.Sources);
         Assert.Equal(2, result.ModelCalls);
 
@@ -293,6 +293,29 @@ public sealed class AnswerQuestionHandlerTests
         Assert.False(char.IsHighSurrogate(answer[^1]));
     }
 
+    [Theory]
+    [InlineData(ToolAssumptions.Expected, "expected_charges")]
+    [InlineData(ToolAssumptions.ConstantPrices, "constant_prices")]
+    [InlineData(ToolAssumptions.ActiveOnly, "active_only")]
+    [InlineData(ToolAssumptions.NoConversion, "no_conversion")]
+    [InlineData(ToolAssumptions.DeclaredUsage, "declared_usage")]
+    [InlineData(ToolAssumptions.NothingCancelled, "nothing_cancelled")]
+    [InlineData("Some future assumption.", ToolAssumptions.OtherKey)]
+    public void AssumptionKeys_AreStable(string text, string expectedKey)
+    {
+        Assert.Equal(expectedKey, ToolAssumptions.KeyOf(text));
+    }
+
+    [Fact]
+    public void AssumptionKeys_CoverEveryAssumption()
+    {
+        var texts = typeof(ToolAssumptions).GetFields()
+            .Where(field => field is { IsLiteral: true } && field.Name != nameof(ToolAssumptions.OtherKey))
+            .Select(field => (string)field.GetRawConstantValue()!);
+
+        Assert.All(texts, text => Assert.NotEqual(ToolAssumptions.OtherKey, ToolAssumptions.KeyOf(text)));
+    }
+
     [Fact]
     public async Task Figures_AreNotSentToTheModel()
     {
@@ -302,6 +325,7 @@ public sealed class AnswerQuestionHandlerTests
 
         Assert.NotEmpty(result.Figures);
         Assert.DoesNotContain("figures", result.ToJson(), StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("isOk", result.ToJson(), StringComparison.OrdinalIgnoreCase);
     }
 
     // ----- Helpers -----

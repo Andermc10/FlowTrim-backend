@@ -42,7 +42,8 @@ public sealed class InsightsApiTests : IClassFixture<FlowTrimApiFactory>
         Assert.Equal("answered", body.GetProperty("status").GetString());
         Assert.Equal(["get_spending_summary"], body.GetProperty("toolsUsed").EnumerateArray().Select(t => t.GetString()));
         Assert.Contains("summary", body.GetProperty("sources").EnumerateArray().Select(s => s.GetString()));
-        Assert.NotEmpty(body.GetProperty("assumptions").EnumerateArray());
+        Assert.Contains(body.GetProperty("assumptions").EnumerateArray(), a =>
+            a.GetProperty("key").GetString() == "no_conversion" && a.GetProperty("text").GetString()!.Length > 0);
         Assert.False(string.IsNullOrWhiteSpace(body.GetProperty("answer").GetString()));
 
         // Las cifras coinciden con GET /api/summary del mismo propietario.

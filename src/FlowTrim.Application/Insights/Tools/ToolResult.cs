@@ -23,6 +23,22 @@ public static class ToolAssumptions
     public const string NoConversion = "Each currency is reported separately; currencies are never combined or converted.";
     public const string DeclaredUsage = "Usage is declared by the user, not verified.";
     public const string NothingCancelled = "The simulation does not cancel anything and savings are not guaranteed.";
+
+    /// <summary>Clave usada cuando un texto no tiene clave registrada; la UI muestra entonces el texto en inglés.</summary>
+    public const string OtherKey = "other";
+
+    // Clave estable por supuesto (contrato con HU-36): la UI traduce por clave, nunca comparando el texto en inglés.
+    private static readonly Dictionary<string, string> Keys = new(StringComparer.Ordinal)
+    {
+        [Expected] = "expected_charges",
+        [ConstantPrices] = "constant_prices",
+        [ActiveOnly] = "active_only",
+        [NoConversion] = "no_conversion",
+        [DeclaredUsage] = "declared_usage",
+        [NothingCancelled] = "nothing_cancelled",
+    };
+
+    public static string KeyOf(string assumption) => Keys.GetValueOrDefault(assumption, OtherKey);
 }
 
 /// <summary>
@@ -45,6 +61,8 @@ public sealed record ToolResult(
     [JsonIgnore]
     public IReadOnlyList<InsightFigure> Figures { get; init; } = [];
 
+    // Ayuda para el código C#; no se envía al modelo (el estado ya va en Status).
+    [JsonIgnore]
     public bool IsOk => Status == ToolStatus.Ok;
 
     public string ToJson() => JsonSerializer.Serialize(this, JsonOptions);

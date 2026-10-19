@@ -10,9 +10,12 @@ public sealed record InsightsAnswerResponse(
     string Status,
     string Answer,
     IReadOnlyList<InsightFigure> Figures,
-    IReadOnlyList<string> Assumptions,
+    IReadOnlyList<InsightAssumption> Assumptions,
     IReadOnlyList<string> Sources,
     IReadOnlyList<string> ToolsUsed);
+
+/// <summary>Supuesto de la respuesta: <c>Key</c> estable para traducir en la UI y <c>Text</c> en inglés como respaldo.</summary>
+public sealed record InsightAssumption(string Key, string Text);
 
 /// <summary>Estados de la respuesta (contrato con HU-36).</summary>
 public static class InsightsAnswerStatus
@@ -167,7 +170,8 @@ public sealed class AnswerQuestionHandler(IChatModel chatModel, FinancialToolReg
             figures.Count > 0 ? InsightsAnswerStatus.Answered : InsightsAnswerStatus.NoData,
             answer,
             figures,
-            ran.SelectMany(result => result.Assumptions).Distinct().ToList(),
+            ran.SelectMany(result => result.Assumptions).Distinct()
+                .Select(text => new InsightAssumption(ToolAssumptions.KeyOf(text), text)).ToList(),
             ran.SelectMany(result => result.Sources).Distinct().ToList(),
             ran.Select(result => result.Tool).Distinct().ToList());
     }
