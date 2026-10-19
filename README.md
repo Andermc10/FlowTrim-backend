@@ -325,15 +325,18 @@ signed-in owner — at most 2 tool rounds and 3 model calls per question — and
 {
   "status": "answered",
   "answer": "If you cancel Netflix you could save 466,800 COP in 12 months...",
-  "figures": [{ "kind": "savings", "label": "Potential savings", "subject": "12 months", "value": 466800, "currency": "COP" }],
+  "figures": [{ "kind": "savings", "label": "Potential savings", "value": 466800, "currency": "COP", "months": 12 }],
   "assumptions": ["The simulation does not cancel anything and savings are not guaranteed."],
   "sources": ["simulator"],
   "toolsUsed": ["simulate_cancellation"]
 }
 ```
 
-- `figures` are built by the backend from the tool results, never from the model's text.
-- `status`: `answered`, `no_data` (tools ran but found nothing), or `unsupported` (no tool was used: the model's
+- `figures` are built by the backend from the tool results, never from the model's text. `kind` is a stable key for
+  translations; `subject` (optional) is a subscription or category name; `months` (savings horizon) and `date`
+  (`yyyy-MM-dd`, expected charge date) are typed so clients format them in their own language.
+- `status`: `answered`, `no_data` (tools ran but found nothing; if every tool call was rejected the model's text is
+  replaced by a fixed message), or `unsupported` (no tool was used: the model's
   text is replaced by a fixed message so no invented number reaches the user).
 - Limits: 5 questions per minute per user (`429` + `Retry-After`) and a 45-second budget per question.
 - Provider problems: `504` (`insights_timeout`), `429` (`insights_rate_limited`), `502` (`insights_unavailable`).

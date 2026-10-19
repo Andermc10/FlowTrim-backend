@@ -28,7 +28,7 @@ public sealed class UpcomingChargesTool(IGetUpcomingChargesHandler handler) : Fi
         var inWindow = upcoming.Items.Where(item => item.DaysUntilCharge <= withinDays).ToList();
         var listed = inWindow.Take(MaxItems).ToList();
         var figures = listed.Select(item => new InsightFigure(
-            InsightFigureKinds.UpcomingCharge, "Expected charge", $"{item.Name} · {item.NextBillingDate:yyyy-MM-dd}", item.Amount, item.Currency))
+            InsightFigureKinds.UpcomingCharge, "Expected charge", item.Name, item.Amount, item.Currency, Date: item.NextBillingDate))
             .ToList();
         var charges = listed.Select(item => new
         {

@@ -171,6 +171,32 @@ public sealed class InsightsApiTests : IClassFixture<FlowTrimApiFactory>
     }
 
     [Fact]
+    public async Task Question_CancelledByClient_IsNotLoggedAsServerError()
+    {
+        var logs = new LogCapture();
+        using var factory = _factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureLogging(logging => logging.AddProvider(logs));
+            builder.ConfigureTestServices(services => services.AddSingleton<IChatModel>(new HangingChatModel()));
+        });
+        using var abort = new CancellationTokenSource(TimeSpan.FromMilliseconds(300));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            ClientFor(factory, NewOwner()).PostAsJsonAsync(Route, new { question = "How much do I spend?" }, abort.Token));
+
+        // El servidor termina la petición después de que el cliente se va: se espera su línea de log. El middleware de
+        // excepciones de ASP.NET Core responde 499 sin pasar por GlobalExceptionHandler (no es un 500).
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (!logs.Entries.Any(e => e.Message.Contains("responded 499")) && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(50);
+        }
+
+        Assert.Contains(logs.Entries, e => e.Message.Contains("responded 499"));
+        Assert.DoesNotContain(logs.Entries, e => e.Level >= LogLevel.Error);
+    }
+
+    [Fact]
     public async Task Question_OverRateLimit_Returns429ForThatOwnerOnly()
     {
         var limited = _factory.CreateClientFor(NewOwner());
