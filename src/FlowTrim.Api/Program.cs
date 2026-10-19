@@ -3,6 +3,7 @@ using FlowTrim.Api.Cors;
 using FlowTrim.Api.Observability;
 using FlowTrim.Application;
 using FlowTrim.Application.Analytics;
+using FlowTrim.Application.Reports;
 using FlowTrim.Application.Abstractions;
 using FlowTrim.Application.Health;
 using FlowTrim.Application.Simulations;
@@ -331,6 +332,17 @@ app.MapGet("/api/analytics", async (
 })
 .RequireAuthorization()
 .WithName("GetAnalytics");
+
+// Exporta todas las suscripciones del propietario a CSV (HU-52). 200 como adjunto / 401.
+app.MapGet("/api/reports/subscriptions.csv", async (
+    IExportSubscriptionsHandler handler,
+    CancellationToken cancellationToken) =>
+{
+    ExportFile file = await handler.HandleAsync(cancellationToken);
+    return Results.File(file.Content, file.ContentType, file.FileName);
+})
+.RequireAuthorization()
+.WithName("ExportSubscriptionsCsv");
 
 app.Run();
 

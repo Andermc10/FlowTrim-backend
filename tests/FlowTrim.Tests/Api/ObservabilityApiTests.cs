@@ -177,6 +177,7 @@ public sealed class ObservabilityApiTests : IClassFixture<FlowTrimApiFactory>
         public Task<IReadOnlyList<Subscription>> ListAsync(string ownerId, int skip, int take, CancellationToken cancellationToken) => throw Failure();
         public Task<int> CountAsync(string ownerId, CancellationToken cancellationToken) => throw Failure();
         public Task<IReadOnlyList<Subscription>> ListActiveAsync(string ownerId, CancellationToken cancellationToken) => throw Failure();
+        public Task<IReadOnlyList<Subscription>> ListAllAsync(string ownerId, CancellationToken cancellationToken) => throw Failure();
         public Task UpdateAsync(Subscription subscription, CancellationToken cancellationToken) => throw Failure();
         public Task<bool> DeleteAsync(string ownerId, Guid id, CancellationToken cancellationToken) => throw Failure();
     }

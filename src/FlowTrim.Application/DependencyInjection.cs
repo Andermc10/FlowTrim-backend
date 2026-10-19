@@ -22,6 +22,7 @@ public static class DependencyInjection
         services.AddScoped<Usage.IListUsageHandler, Usage.ListUsageHandler>();
         services.AddScoped<Usage.IGetCostPerUseHandler, Usage.GetCostPerUseHandler>();
         services.AddScoped<Analytics.IGetAnalyticsHandler, Analytics.GetAnalyticsHandler>();
+        services.AddScoped<Reports.IExportSubscriptionsHandler, Reports.ExportSubscriptionsHandler>();
         return services;
     }
 }

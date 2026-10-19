@@ -65,6 +65,27 @@ public sealed class RepositoryTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task SubscriptionRepository_ListAll_ReturnsActiveAndInactiveOfOwnerOrderedByName()
+    {
+        var inactive = await AddAsync(OwnerA, "Zeta", new DateOnly(2026, 11, 1));
+        await AddAsync(OwnerA, "Alpha", new DateOnly(2026, 12, 1));
+        await AddAsync(OwnerB, "Other", new DateOnly(2026, 11, 1));
+        await using (var scope = _services.CreateAsyncScope())
+        {
+            var repository = scope.ServiceProvider.GetRequiredService<ISubscriptionRepository>();
+            inactive.Update("Zeta", null, 38900m, "COP", BillingCycle.Monthly, new DateOnly(2026, 11, 1),
+                SubscriptionStatus.Inactive, new FixedTimeProvider(FixedNow));
+            await repository.UpdateAsync(inactive, default);
+        }
+
+        await using var readScope = _services.CreateAsyncScope();
+        var all = await readScope.ServiceProvider.GetRequiredService<ISubscriptionRepository>().ListAllAsync(OwnerA, default);
+
+        Assert.Equal(["Alpha", "Zeta"], all.Select(s => s.Name));
+        Assert.Equal(SubscriptionStatus.Inactive, all[1].Status);
+    }
+
+    [Fact]
     public async Task UsageRecordRepository_OtherOwner_ReturnsEmpty()
     {
         var subscription = await AddAsync(OwnerA, "Netflix", new DateOnly(2026, 11, 1));

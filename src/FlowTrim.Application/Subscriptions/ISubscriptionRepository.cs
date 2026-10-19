@@ -20,6 +20,9 @@ public interface ISubscriptionRepository
     /// <summary>Devuelve las suscripciones activas del propietario para el resumen financiero.</summary>
     Task<IReadOnlyList<Subscription>> ListActiveAsync(string ownerId, CancellationToken cancellationToken);
 
+    /// <summary>Devuelve todas las suscripciones del propietario (activas e inactivas), ordenadas por nombre.</summary>
+    Task<IReadOnlyList<Subscription>> ListAllAsync(string ownerId, CancellationToken cancellationToken);
+
     /// <summary>Persiste los cambios de una suscripción existente.</summary>
     Task UpdateAsync(Subscription subscription, CancellationToken cancellationToken);
 

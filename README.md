@@ -252,6 +252,11 @@ subscriptions and the **expected charges per calendar month** from the current m
 monthly plans every month from their billing month, yearly plans only in their billing month and every 12
 months. These are expected charges from user-entered data, not confirmed payments; there is no charge history.
 
+`GET /api/reports/subscriptions.csv` downloads **all** the owner's subscriptions (active and inactive) as an
+RFC 4180 CSV attachment (`text/csv; charset=utf-8` with BOM so spreadsheets show accents correctly; columns
+`name, category, amount, currency, billing_cycle, monthly_equivalent, next_billing_date, status`). Text cells that
+start with `= + - @`, tab or CR are prefixed with `'` to prevent spreadsheet formula injection.
+
 ## Errors
 
 A global exception handler returns RFC 7807 `ProblemDetails` consistently: `400`
