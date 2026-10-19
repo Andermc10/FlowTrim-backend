@@ -1,3 +1,4 @@
+using FlowTrim.Application.Insights.Tools;
 using FlowTrim.Application.Subscriptions;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -23,6 +24,14 @@ public static class DependencyInjection
         services.AddScoped<Usage.IGetCostPerUseHandler, Usage.GetCostPerUseHandler>();
         services.AddScoped<Analytics.IGetAnalyticsHandler, Analytics.GetAnalyticsHandler>();
         services.AddScoped<Reports.IExportSubscriptionsHandler, Reports.ExportSubscriptionsHandler>();
+
+        // Herramientas financieras de solo lectura para Insights (HU-34): esta lista es la allow-list completa.
+        services.AddScoped<IFinancialTool, SpendingSummaryTool>();
+        services.AddScoped<IFinancialTool, SpendingAnalyticsTool>();
+        services.AddScoped<IFinancialTool, UpcomingChargesTool>();
+        services.AddScoped<IFinancialTool, SimulateCancellationTool>();
+        services.AddScoped<IFinancialTool, CostPerUseTool>();
+        services.AddScoped<FinancialToolRegistry>();
         return services;
     }
 }
