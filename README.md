@@ -326,7 +326,7 @@ signed-in owner — at most 2 tool rounds and 3 model calls per question — and
   "status": "answered",
   "answer": "If you cancel Netflix you could save 466,800 COP in 12 months...",
   "figures": [{ "kind": "savings", "label": "Potential savings", "value": 466800, "currency": "COP", "months": 12 }],
-  "assumptions": ["The simulation does not cancel anything and savings are not guaranteed."],
+  "assumptions": [{ "key": "nothing_cancelled", "text": "The simulation does not cancel anything and savings are not guaranteed." }],
   "sources": ["simulator"],
   "toolsUsed": ["simulate_cancellation"]
 }
@@ -335,6 +335,8 @@ signed-in owner — at most 2 tool rounds and 3 model calls per question — and
 - `figures` are built by the backend from the tool results, never from the model's text. `kind` is a stable key for
   translations; `subject` (optional) is a subscription or category name; `months` (savings horizon) and `date`
   (`yyyy-MM-dd`, expected charge date) are typed so clients format them in their own language.
+- `assumptions[].key` is stable (`expected_charges`, `constant_prices`, `active_only`, `no_conversion`,
+  `declared_usage`, `nothing_cancelled`, or `other`); `text` is the English fallback.
 - `status`: `answered`, `no_data` (tools ran but found nothing; if every tool call was rejected the model's text is
   replaced by a fixed message), or `unsupported` (no tool was used: the model's
   text is replaced by a fixed message so no invented number reaches the user).
