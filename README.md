@@ -291,6 +291,27 @@ Never logged: `Authorization` header or tokens, cookies, request/response bodies
 strings, the user's `sub`, subscription names or amounts. To trace a failure, search the logs for the
 reference shown to the user (see the tracker's `docs/OPERATIONS.md`).
 
+## AI provider (FlowTrim Insights groundwork)
+
+The application talks to language models only through `IChatModel` (HU-33). Two implementations exist:
+
+- **`Fake`** (default) — deterministic and offline. Used by tests, CI and anyone who clones the repository; no key needed.
+- **`OpenAiCompatible`** — any `/chat/completions` endpoint in the OpenAI format (GitHub Models, OpenRouter, Groq,
+  Gemini's compatible endpoint). Switching provider is a configuration change.
+
+To use GitHub Models locally, keep the token in User Secrets (never in `appsettings*.json`, which are versioned):
+
+```bash
+dotnet user-secrets set "Insights:Provider:Kind" "OpenAiCompatible" --project src/FlowTrim.Api
+dotnet user-secrets set "Insights:Provider:BaseUrl" "https://models.github.ai/inference" --project src/FlowTrim.Api
+dotnet user-secrets set "Insights:Provider:Model" "openai/gpt-4o-mini" --project src/FlowTrim.Api
+dotnet user-secrets set "Insights:Provider:ApiKey" "<your-token>" --project src/FlowTrim.Api
+```
+
+Failures become controlled errors (`Timeout`, `RateLimited`, `Unauthorized`, `Unavailable`, `InvalidResponse`,
+`InputTooLarge`); logs record provider, model, outcome, duration and token counts — never the key, questions or answers.
+Free tiers may retain prompts: use demo data only. The model only explains results of deterministic C# tools (EP-05).
+
 ## Configuration reference
 
 Every setting the API reads. Development values come from `appsettings.Development.json` and User
@@ -305,6 +326,11 @@ Secrets; deployments use environment variables (or the host's secret store). Pla
 | `Cors:AllowedOrigins` | `Cors__AllowedOrigins__0` (`__1`, …) | Outside Development | No | `https://<frontend-host>` |
 | `AllowedHosts` | `AllowedHosts` | No (default `*`) | No | `<api-host>` |
 | `ASPNETCORE_ENVIRONMENT` | `ASPNETCORE_ENVIRONMENT` | Deployments | No | `Production` |
+| `Insights:Provider:Kind` | `Insights__Provider__Kind` | No (default `Fake`) | No | `Fake` or `OpenAiCompatible` |
+| `Insights:Provider:BaseUrl` | `Insights__Provider__BaseUrl` | With `OpenAiCompatible` | No | `https://models.github.ai/inference` |
+| `Insights:Provider:Model` | `Insights__Provider__Model` | With `OpenAiCompatible` | No | `openai/gpt-4o-mini` |
+| `Insights:Provider:ApiKey` | `Insights__Provider__ApiKey` | With `OpenAiCompatible` | **Yes** | `<provider-token>` |
+| `Insights:Provider:TimeoutSeconds` / `MaxOutputTokens` / `MaxInputCharacters` | `Insights__Provider__…` | No (20 / 400 / 12000) | No | `20` |
 
 Production logging (`appsettings.json`): `Default=Information`, `Microsoft.AspNetCore`,
 `Microsoft.EntityFrameworkCore` and `Npgsql` at `Warning`, so SQL text is never written to production logs.
