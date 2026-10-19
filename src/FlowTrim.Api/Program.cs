@@ -11,6 +11,7 @@ using FlowTrim.Application.Subscriptions;
 using FlowTrim.Application.Summaries;
 using FlowTrim.Application.Usage;
 using FlowTrim.Infrastructure;
+using FlowTrim.Infrastructure.Insights;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Cors.Infrastructure;
@@ -82,6 +83,13 @@ var connectionString = builder.Configuration.GetConnectionString("FlowTrimDb")
         "Connection string 'FlowTrimDb' is not configured. Set it via User Secrets or the ConnectionStrings__FlowTrimDb environment variable.");
 
 builder.Services.AddInfrastructure(connectionString);
+
+// Proveedor de IA (HU-33): simulado por defecto; el adaptador real exige BaseUrl https, modelo y clave al arrancar.
+builder.Services.AddOptions<ChatModelOptions>()
+    .Bind(builder.Configuration.GetSection(ChatModelOptions.SectionName))
+    .ValidateOnStart();
+builder.Services.AddSingleton<IValidateOptions<ChatModelOptions>, ChatModelOptionsValidator>();
+builder.Services.AddChatModel();
 builder.Services.AddApplication();
 
 // Manejo centralizado de errores: ProblemDetails consistente + handler global.
