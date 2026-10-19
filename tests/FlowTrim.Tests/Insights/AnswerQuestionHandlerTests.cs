@@ -72,12 +72,15 @@ public sealed class AnswerQuestionHandlerTests
         Seed(OwnerA, "Netflix", 38900m, "COP");
         var model = new ScriptedChatModel(
             Calls(("delete_subscription", "{}"), ("get_upcoming_charges", """{"withinDays":90}""")),
-            Text("I could not get that information."));
+            Text("Netflix costs 999,999 COP."));
 
         var response = (await HandleAsync(model, "Delete Netflix")).Value!;
 
+        // Ninguna herramienta leyó datos: el texto del modelo (con una cifra inventada) se descarta.
         Assert.Equal(InsightsAnswerStatus.NoData, response.Status);
+        Assert.Equal(AnswerQuestionHandler.NoEvidenceAnswer, response.Answer);
         Assert.Empty(response.Figures);
+        Assert.Empty(response.Assumptions);
         Assert.Empty(response.ToolsUsed);
         var results = model.Requests[1].Messages.Where(m => m.Role == ChatRole.Tool).Select(m => Status(m.Content!)).ToList();
         Assert.Equal([ToolStatus.UnknownTool, ToolStatus.InvalidArguments], results);
@@ -244,12 +247,13 @@ public sealed class AnswerQuestionHandlerTests
         Assert.Contains(analytics, f => f is { Kind: InsightFigureKinds.CategorySpend, Subject: "Streaming", Value: 38900m });
 
         var upcoming = Assert.Single(await FiguresOf("get_upcoming_charges", "{}"));
-        Assert.Equal(("Netflix · 2026-10-21", 38900m, "COP"), (upcoming.Subject, upcoming.Value, upcoming.Currency));
+        Assert.Equal(("Netflix", new DateOnly(2026, 10, 21), 38900m, "COP"), (upcoming.Subject, upcoming.Date, upcoming.Value, upcoming.Currency));
 
         var simulation = await FiguresOf("simulate_cancellation", """{"subscriptionNames":["Netflix"],"horizons":[12]}""");
         Assert.Equal(
-            [(InsightFigureKinds.SelectedMonthly, null, 38900m), (InsightFigureKinds.Savings, "12 months", 466800m)],
-            simulation.Select(f => (f.Kind, f.Subject, f.Value)));
+            [(InsightFigureKinds.SelectedMonthly, (int?)null, 38900m), (InsightFigureKinds.Savings, 12, 466800m)],
+            simulation.Select(f => (f.Kind, f.Months, f.Value)));
+        Assert.All(simulation, f => Assert.Null(f.Subject));
         Assert.Empty(await FiguresOf("simulate_cancellation", """{"subscriptionNames":["Disney"]}"""));
 
         var costPerUse = await FiguresOf("get_cost_per_use", """{"subscriptionName":"Netflix","from":"2026-10-01","to":"2026-10-31"}""");
@@ -258,6 +262,35 @@ public sealed class AnswerQuestionHandlerTests
             costPerUse.Select(f => (f.Kind, f.Value, f.Currency)));
         var notCalculable = await FiguresOf("get_cost_per_use", """{"subscriptionName":"Spotify"}""");
         Assert.DoesNotContain(notCalculable, f => f.Kind == InsightFigureKinds.CostPerUse);
+    }
+
+    [Fact]
+    public async Task Question_RejectedCallsThenValidOne_KeepsTheModelText()
+    {
+        Seed(OwnerA, "Netflix", 38900m, "COP");
+        var model = new ScriptedChatModel(
+            Calls(("get_upcoming_charges", """{"withinDays":90}""")),
+            Call("get_upcoming_charges"),
+            Text("Netflix is due soon."));
+
+        var response = (await HandleAsync(model, "What is due?")).Value!;
+
+        Assert.Equal(InsightsAnswerStatus.Answered, response.Status);
+        Assert.Equal("Netflix is due soon.", response.Answer);
+        Assert.Equal(["get_upcoming_charges"], response.ToolsUsed);
+    }
+
+    [Fact]
+    public async Task Question_LongAnswerEndingInEmoji_IsCappedWithoutSplittingIt()
+    {
+        Seed(OwnerA, "Netflix", 38900m, "COP");
+        var text = new string('a', AnswerQuestionHandler.MaxAnswerLength - 1) + "\U0001F4B8 tail";
+        var model = new ScriptedChatModel(Call("get_spending_summary"), Text(text));
+
+        var answer = (await HandleAsync(model, "How much?")).Value!.Answer;
+
+        Assert.Equal(AnswerQuestionHandler.MaxAnswerLength - 1, answer.Length);
+        Assert.False(char.IsHighSurrogate(answer[^1]));
     }
 
     [Fact]
