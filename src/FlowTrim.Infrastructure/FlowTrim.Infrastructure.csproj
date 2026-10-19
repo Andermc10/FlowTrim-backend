@@ -5,6 +5,12 @@
     <ProjectReference Include="..\FlowTrim.Domain\FlowTrim.Domain.csproj" />
   </ItemGroup>
 
+  <!-- Framework compartido de ASP.NET Core (no es un paquete NuGet): IHttpClientFactory, logging y options
+       para el adaptador del proveedor de IA (HU-33). La API ya se despliega con él. -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="EFCore.NamingConventions" Version="10.0.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.4">
