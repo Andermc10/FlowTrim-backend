@@ -91,10 +91,9 @@ public static partial class SubscriptionCsvImport
         var columns = header.Select((name, index) => (name, index)).Where(column => column.name.Length > 0)
             .ToDictionary(column => column.name, column => column.index);
         var rows = dataRows.Select(record => ValidateRow(record, header.Count, columns)).ToList();
-        var valid = rows.Count(row => row.Status == ImportRowStatus.Valid);
         var ignored = header.Where(name => name.Length > 0 && !RequiredColumns.Contains(name) && !OptionalColumns.Contains(name)).ToList();
         return SubscriptionImportResult.Success(new SubscriptionImportPreview(
-            rows, new ImportSummary(rows.Count, valid, rows.Count - valid), ignored));
+            rows, ImportSummary.From(rows), ignored));
     }
 
     private static ImportRow ValidateRow(CsvRecord record, int columnCount, IReadOnlyDictionary<string, int> columns)

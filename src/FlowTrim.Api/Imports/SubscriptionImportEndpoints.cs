@@ -4,8 +4,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace FlowTrim.Api.Imports;
 
 /// <summary>
-/// Importación CSV de suscripciones (EP-07). La vista previa (HU-43) valida el archivo sin persistir nada y nunca
-/// registra su contenido: solo cuántas filas son válidas o inválidas.
+/// Importación CSV de suscripciones (EP-07). La vista previa (HU-43/HU-44) valida el archivo y marca duplicados sin
+/// persistir nada, y nunca registra su contenido: solo los conteos por estado.
 /// </summary>
 public static class SubscriptionImportEndpoints
 {
@@ -46,8 +46,8 @@ public static class SubscriptionImportEndpoints
 
         var summary = result.Preview!.Summary;
         loggerFactory.CreateLogger("FlowTrim.Api.Imports").LogInformation(
-            "Subscription import preview with {Total} rows ({Valid} valid, {Invalid} invalid)",
-            summary.Total, summary.Valid, summary.Invalid);
+            "Subscription import preview with {Total} rows ({Valid} valid, {Invalid} invalid, {Duplicate} duplicate)",
+            summary.Total, summary.Valid, summary.Invalid, summary.Duplicate);
         return Results.Ok(result.Preview);
     }
 }

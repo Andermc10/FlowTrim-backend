@@ -5,12 +5,17 @@ using System.Text;
 using System.Text.Json;
 using FlowTrim.Api.Imports;
 using FlowTrim.Application.Imports;
+using FlowTrim.Domain.Subscriptions;
+using FlowTrim.Tests.Common;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace FlowTrim.Tests.Api;
 
-/// <summary>HU-43 por HTTP: subida multipart, errores de archivo con código, límites y ninguna persistencia.</summary>
+/// <summary>
+/// HU-43/HU-44 por HTTP: subida multipart, errores de archivo con código, límites, duplicados del propietario y ninguna
+/// persistencia.
+/// </summary>
 public sealed class SubscriptionImportApiTests : IClassFixture<FlowTrimApiFactory>
 {
     private const string Route = "/api/subscription-imports/preview";
@@ -123,9 +128,46 @@ public sealed class SubscriptionImportApiTests : IClassFixture<FlowTrimApiFactor
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var line = Assert.Single(logs.Entries, entry => entry.Message.StartsWith("Subscription import preview", StringComparison.Ordinal));
-        Assert.Equal("Subscription import preview with 2 rows (1 valid, 1 invalid)", line.Message);
+        Assert.Equal("Subscription import preview with 2 rows (1 valid, 1 invalid, 0 duplicate)", line.Message);
         Assert.DoesNotContain("Netflix", logs.AllText());
         Assert.DoesNotContain("38900", logs.AllText());
+    }
+
+    [Fact]
+    public async Task Preview_ExistingOwnerMatch_ClassifiesDuplicate()
+    {
+        var owner = NewOwner();
+        Seed(owner, "Netflix", "COP");
+        const string csv = "name,amount,currency,billing_cycle,next_billing_date\r\n" +
+            "netflix ,38900,cop,Monthly,2026-10-22\r\nGym,90000,COP,Monthly,2026-10-25\r\nGYM,90000,COP,Monthly,2026-10-25\r\n";
+        var before = _factory.Subscriptions.Items.Count;
+
+        var body = await (await UploadAsync(Encoding.UTF8.GetBytes(csv), owner: owner)).Content.ReadFromJsonAsync<JsonElement>();
+
+        var rows = body.GetProperty("rows");
+        Assert.Equal(("duplicate", "existing"), (rows[0].GetProperty("status").GetString(), rows[0].GetProperty("duplicateOf").GetString()));
+        Assert.False(rows[0].TryGetProperty("duplicateOfRow", out _));
+        // La fila duplicada conserva sus valores normalizados para mostrar qué coincidió.
+        Assert.Equal("netflix", rows[0].GetProperty("values").GetProperty("name").GetString());
+        Assert.Equal("valid", rows[1].GetProperty("status").GetString());
+        Assert.False(rows[1].TryGetProperty("duplicateOf", out _));
+        Assert.Equal(("file", 3), (rows[2].GetProperty("duplicateOf").GetString(), rows[2].GetProperty("duplicateOfRow").GetInt32()));
+        var summary = body.GetProperty("summary");
+        Assert.Equal((3, 1, 0, 2), (summary.GetProperty("total").GetInt32(), summary.GetProperty("valid").GetInt32(),
+            summary.GetProperty("invalid").GetInt32(), summary.GetProperty("duplicate").GetInt32()));
+        Assert.Equal(before, _factory.Subscriptions.Items.Count);
+    }
+
+    [Fact]
+    public async Task Preview_OtherOwnerRow_IsNotUsedForDuplicateDetection()
+    {
+        Seed(NewOwner(), "Spotify", "COP");
+
+        var body = await (await UploadAsync(Encoding.UTF8.GetBytes(
+            "name,amount,currency,billing_cycle,next_billing_date\nSpotify,16900,COP,Monthly,2026-10-22"))).Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal("valid", body.GetProperty("rows")[0].GetProperty("status").GetString());
+        Assert.Equal(0, body.GetProperty("summary").GetProperty("duplicate").GetInt32());
     }
 
     [Fact]
@@ -140,11 +182,15 @@ public sealed class SubscriptionImportApiTests : IClassFixture<FlowTrimApiFactor
 
     // ----- Helpers -----
 
-    private async Task<HttpResponseMessage> UploadAsync(byte[] content, string fileName = "subscriptions.csv")
+    private async Task<HttpResponseMessage> UploadAsync(byte[] content, string fileName = "subscriptions.csv", string? owner = null)
     {
         using var form = Form(content, fileName);
-        return await _factory.CreateClientFor(NewOwner()).PostAsync(Route, form);
+        return await _factory.CreateClientFor(owner ?? NewOwner()).PostAsync(Route, form);
     }
+
+    private void Seed(string owner, string name, string currency) =>
+        _factory.Subscriptions.Items.Add(Subscription.Create(owner, name, null, 100m, currency, BillingCycle.Monthly,
+            new DateOnly(2026, 11, 1), new FixedTimeProvider(DateTimeOffset.UtcNow)));
 
     private static MultipartFormDataContent Form(byte[] content, string fileName)
     {

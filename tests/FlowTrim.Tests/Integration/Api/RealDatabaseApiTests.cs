@@ -110,6 +110,24 @@ public sealed class RealDatabaseApiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Preview_DuplicateDetection_UsesOwnerRowsFromDatabase()
+    {
+        await CreateAsync(_factory.CreateClientFor(OwnerA), "Netflix A", 38900m);
+        await CreateAsync(_factory.CreateClientFor(OwnerB), "Disney B", 25000m);
+        var csv = "name,amount,currency,billing_cycle,next_billing_date\nnetflix a,38900,COP,Monthly,2026-11-01\nDisney B,25000,COP,Monthly,2026-11-01\n"u8.ToArray();
+        using var form = new MultipartFormDataContent { { new ByteArrayContent(csv), "file", "subscriptions.csv" } };
+
+        var response = await _factory.CreateClientFor(OwnerA).PostAsync("/api/subscription-imports/preview", form);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var rows = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("rows");
+        // La suscripción de A cuenta como duplicado; la de B no existe para A.
+        Assert.Equal(("duplicate", "existing"), (rows[0].GetProperty("status").GetString(), rows[0].GetProperty("duplicateOf").GetString()));
+        Assert.Equal("valid", rows[1].GetProperty("status").GetString());
+        Assert.Equal(["2"], await QueryAsync("SELECT count(*)::text FROM subscriptions"));
+    }
+
+    [Fact]
     public async Task PrivateRoute_WithoutToken_ReturnsUnauthorized_RealDatabase()
     {
         var response = await _factory.CreateClient().GetAsync("/api/subscriptions");
