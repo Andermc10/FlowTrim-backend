@@ -1,13 +1,24 @@
+using System.Text.Json.Serialization;
+
 namespace FlowTrim.Application.Imports;
 
-/// <summary>Vista previa de una importación CSV (HU-43): nada de esto se ha guardado.</summary>
+/// <summary>Vista previa de una importación CSV (HU-43/HU-44): nada de esto se ha guardado.</summary>
 public sealed record SubscriptionImportPreview(
     IReadOnlyList<ImportRow> Rows,
     ImportSummary Summary,
     IReadOnlyList<string> IgnoredColumns);
 
-/// <summary>Fila del archivo: número de fila de la hoja, estado, valores normalizados (solo si es válida) y errores.</summary>
-public sealed record ImportRow(int RowNumber, string Status, ImportRowValues? Values, IReadOnlyList<ImportError> Errors);
+/// <summary>
+/// Fila del archivo: número de fila de la hoja, estado, valores normalizados (si no es inválida) y errores. Una fila
+/// duplicada (HU-44) indica contra qué coincidió; esos dos campos solo aparecen en filas duplicadas.
+/// </summary>
+public sealed record ImportRow(
+    int RowNumber,
+    string Status,
+    ImportRowValues? Values,
+    IReadOnlyList<ImportError> Errors,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? DuplicateOf = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? DuplicateOfRow = null);
 
 /// <summary>Valores ya normalizados, listos para crear la suscripción.</summary>
 public sealed record ImportRowValues(
@@ -22,13 +33,29 @@ public sealed record ImportRowValues(
 /// <summary>Error de un campo: columna CSV, código estable y mensaje seguro.</summary>
 public sealed record ImportError(string Field, string Code, string Message);
 
-public sealed record ImportSummary(int Total, int Valid, int Invalid);
+/// <summary>Conteos de la vista previa: <c>Valid</c> son las filas que se crearían; siempre suman <c>Total</c>.</summary>
+public sealed record ImportSummary(int Total, int Valid, int Invalid, int Duplicate)
+{
+    public static ImportSummary From(IReadOnlyCollection<ImportRow> rows) => new(
+        rows.Count,
+        rows.Count(row => row.Status == ImportRowStatus.Valid),
+        rows.Count(row => row.Status == ImportRowStatus.Invalid),
+        rows.Count(row => row.Status == ImportRowStatus.Duplicate));
+}
 
-/// <summary>Estados de fila (contrato con HU-44 a HU-46).</summary>
+/// <summary>Estados de fila (contrato con HU-45 y HU-46).</summary>
 public static class ImportRowStatus
 {
     public const string Valid = "valid";
     public const string Invalid = "invalid";
+    public const string Duplicate = "duplicate";
+}
+
+/// <summary>Con qué coincidió una fila duplicada (HU-44).</summary>
+public static class ImportDuplicateSource
+{
+    public const string Existing = "existing";
+    public const string File = "file";
 }
 
 /// <summary>Códigos estables de error de fila y de archivo.</summary>

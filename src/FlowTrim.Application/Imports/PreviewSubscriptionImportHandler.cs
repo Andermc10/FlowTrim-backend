@@ -1,8 +1,13 @@
 using System.Text;
+using FlowTrim.Application.Abstractions;
+using FlowTrim.Application.Common;
+using FlowTrim.Application.Subscriptions;
 
 namespace FlowTrim.Application.Imports;
 
-/// <summary>Caso de uso: vista previa de un CSV de suscripciones (HU-43). No persiste nada.</summary>
+/// <summary>
+/// Caso de uso: vista previa de un CSV de suscripciones (HU-43) con duplicados del propietario (HU-44). No persiste nada.
+/// </summary>
 public interface IPreviewSubscriptionImportHandler
 {
     Task<SubscriptionImportResult> HandleAsync(string? fileName, Stream content, CancellationToken cancellationToken);
@@ -15,6 +20,15 @@ public sealed class PreviewSubscriptionImportHandler : IPreviewSubscriptionImpor
 
     // UTF-8 estricto: un byte inválido es un error del archivo, no un carácter reemplazado en silencio.
     private static readonly UTF8Encoding StrictUtf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
+
+    private readonly ISubscriptionRepository _repository;
+    private readonly ICurrentUser _currentUser;
+
+    public PreviewSubscriptionImportHandler(ISubscriptionRepository repository, ICurrentUser currentUser)
+    {
+        _repository = repository;
+        _currentUser = currentUser;
+    }
 
     public async Task<SubscriptionImportResult> HandleAsync(string? fileName, Stream content, CancellationToken cancellationToken)
     {
@@ -53,7 +67,15 @@ public sealed class PreviewSubscriptionImportHandler : IPreviewSubscriptionImpor
         }
 
         // El BOM de UTF-8 (lo escribe Excel y nuestro exportador) no forma parte del contenido.
-        return SubscriptionCsvImport.Parse(text.TrimStart('﻿'));
+        var result = SubscriptionCsvImport.Parse(text.TrimStart('﻿'));
+        if (result.Preview is not { } preview || preview.Summary.Valid == 0)
+        {
+            return result;
+        }
+
+        // Una sola lectura del propietario; la comparación se hace en memoria (como mucho 500 filas).
+        var existing = await _repository.ListAllAsync(_currentUser.GetOwnerId(), cancellationToken);
+        return SubscriptionImportResult.Success(SubscriptionImportDuplicates.Classify(preview, existing));
     }
 
     private static SubscriptionImportResult Fail(string code, string detail) =>
