@@ -22,7 +22,7 @@ public sealed class SubscriptionCsvImportTests
         Assert.Equal(2, row.RowNumber);
         Assert.Empty(row.Errors);
         Assert.Equal(new ImportRowValues("Netflix", "Streaming", 38900m, "COP", "Monthly", new DateOnly(2026, 10, 22), "Inactive"), row.Values);
-        Assert.Equal(new ImportSummary(1, 1, 0), preview.Summary);
+        Assert.Equal(new ImportSummary(1, 1, 0, 0), preview.Summary);
     }
 
     [Fact]
