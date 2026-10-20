@@ -1,7 +1,14 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
+using FlowTrim.Infrastructure.Persistence;
 using FlowTrim.Tests.Api;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 
 namespace FlowTrim.Tests.Integration.Api;
@@ -128,6 +135,47 @@ public sealed class RealDatabaseApiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Confirm_RealDatabase_CreatesRowsAtomically()
+    {
+        await CreateAsync(_factory.CreateClientFor(OwnerA), "Netflix A", 38900m);
+
+        var response = await ConfirmImportAsync(_factory, OwnerA, ImportCsv);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal((3, 2, 1), (body.GetProperty("total").GetInt32(), body.GetProperty("created").GetInt32(), body.GetProperty("duplicate").GetInt32()));
+        Assert.Equal(["Gym|Inactive|it|owner-a", "Netflix A|Active|it|owner-a", "Park|Active|it|owner-a"], await QueryAsync(
+            "SELECT name || '|' || status || '|' || owner_id FROM subscriptions ORDER BY name"));
+    }
+
+    [Fact]
+    public async Task Confirm_ConcurrentSameFile_CreatesEachSubscriptionOnce()
+    {
+        // Varias confirmaciones simultáneas del mismo archivo: el bloqueo por propietario las pone en fila.
+        var responses = await Task.WhenAll(Enumerable.Range(0, 4).Select(_ => ConfirmImportAsync(_factory, OwnerA, ImportCsv)));
+
+        Assert.All(responses, response => Assert.Equal(HttpStatusCode.OK, response.StatusCode));
+        var created = await Task.WhenAll(responses.Select(async response =>
+            (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("created").GetInt32()));
+        Assert.Equal(3, created.Sum());
+        Assert.Equal(["Gym|1", "Park|1", "netflix a|1"], await QueryAsync(
+            "SELECT name || '|' || count(*) FROM subscriptions GROUP BY name ORDER BY name COLLATE \"C\""));
+    }
+
+    [Fact]
+    public async Task Confirm_SaveFailure_RollsBackEveryRow()
+    {
+        // Las filas llegan a insertarse y el fallo ocurre antes del commit: la transacción debe deshacerlas.
+        await using var failing = _factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
+            services.ConfigureDbContext<FlowTrimDbContext>(options => options.AddInterceptors(new FailAfterSaveInterceptor()))));
+
+        var response = await ConfirmImportAsync(failing, OwnerA, ImportCsv);
+
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.Equal(["0"], await QueryAsync("SELECT count(*)::text FROM subscriptions"));
+    }
+
+    [Fact]
     public async Task PrivateRoute_WithoutToken_ReturnsUnauthorized_RealDatabase()
     {
         var response = await _factory.CreateClient().GetAsync("/api/subscriptions");
@@ -141,6 +189,23 @@ public sealed class RealDatabaseApiTests : IAsyncLifetime
         var health = await GetJsonAsync(_factory.CreateClient(), "/api/health");
 
         Assert.Equal("Healthy", health.GetProperty("database").GetString());
+    }
+
+    private const string ImportCsv = "name,amount,currency,billing_cycle,next_billing_date,status\n" +
+        "netflix a,38900,COP,Monthly,2026-11-01,Active\nGym,90000,COP,Monthly,2026-11-02,Inactive\nPark,5000,COP,Monthly,2026-11-03,\n";
+
+    private static async Task<HttpResponseMessage> ConfirmImportAsync(WebApplicationFactory<Program> factory, string owner, string csv)
+    {
+        using var form = new MultipartFormDataContent { { new ByteArrayContent(Encoding.UTF8.GetBytes(csv)), "file", "subscriptions.csv" } };
+        return await factory.CreateClientFor(owner).PostAsync("/api/subscription-imports/confirm", form);
+    }
+
+    /// <summary>Falla justo después de que EF Core inserta las filas, dentro de la transacción y antes del commit.</summary>
+    private sealed class FailAfterSaveInterceptor : SaveChangesInterceptor
+    {
+        public override ValueTask<int> SavedChangesAsync(
+            SaveChangesCompletedEventData eventData, int result, CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("Simulated failure after insert.");
     }
 
     private static SubscriptionPayload Subscription(string name, decimal amount) =>
