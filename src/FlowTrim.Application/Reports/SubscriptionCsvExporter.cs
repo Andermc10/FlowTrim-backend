@@ -10,10 +10,7 @@ namespace FlowTrim.Application.Reports;
 /// </summary>
 public static class SubscriptionCsvExporter
 {
-    public const string Header =
-        "name,category,amount,currency,billing_cycle,monthly_equivalent,next_billing_date,status";
-
-    private static readonly char[] FormulaPrefixes = ['=', '+', '-', '@', '\t', '\r'];
+    public static readonly string Header = string.Join(',', SubscriptionCsvFormat.Columns);
     private static readonly char[] CharactersRequiringQuotes = [',', '"', '\r', '\n'];
 
     public static string Export(IEnumerable<Subscription> subscriptions)
@@ -48,7 +45,7 @@ public static class SubscriptionCsvExporter
             return string.Empty;
         }
 
-        var safe = FormulaPrefixes.Contains(value[0]) ? "'" + value : value;
+        var safe = SubscriptionCsvFormat.FormulaPrefixes.Contains(value[0]) ? SubscriptionCsvFormat.FormulaGuard + value : value;
         return safe.IndexOfAny(CharactersRequiringQuotes) >= 0
             ? "\"" + safe.Replace("\"", "\"\"") + "\""
             : safe;
