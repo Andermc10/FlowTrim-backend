@@ -7,6 +7,9 @@ namespace FlowTrim.Infrastructure.Persistence;
 /// <summary>Implementación EF Core de <see cref="ISubscriptionRepository"/>.</summary>
 internal sealed class SubscriptionRepository : ISubscriptionRepository
 {
+    // Espacio de nombres de la clave del bloqueo, para no chocar con otros usos futuros de bloqueos consultivos.
+    private const string ImportLockPrefix = "subscription-import:";
+
     private readonly FlowTrimDbContext _dbContext;
 
     public SubscriptionRepository(FlowTrimDbContext dbContext) => _dbContext = dbContext;
@@ -45,6 +48,25 @@ internal sealed class SubscriptionRepository : ISubscriptionRepository
             .OrderBy(s => s.Name)
             .ThenBy(s => s.Id)
             .ToListAsync(cancellationToken);
+
+    public async Task AddImportedAsync(
+        string ownerId,
+        Func<IReadOnlyList<Subscription>, IReadOnlyList<Subscription>> selectNew,
+        CancellationToken cancellationToken)
+    {
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+        // Bloqueo consultivo por propietario, liberado al confirmar o revertir: dos importaciones del mismo usuario se
+        // ejecutan una tras otra y la segunda ya ve lo que creó la primera (no duplica). Otros usuarios no esperan,
+        // salvo una colisión del hash, que solo los pone en fila.
+        await _dbContext.Database.ExecuteSqlAsync(
+            $"SELECT pg_advisory_xact_lock(hashtextextended({ImportLockPrefix + ownerId}, 0))", cancellationToken);
+
+        var existing = await ListAllAsync(ownerId, cancellationToken);
+        _dbContext.Subscriptions.AddRange(selectNew(existing));
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
 
     public async Task UpdateAsync(Subscription subscription, CancellationToken cancellationToken)
     {
