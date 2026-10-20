@@ -1,5 +1,6 @@
 using FlowTrim.Api.Authentication;
 using FlowTrim.Api.Cors;
+using FlowTrim.Api.Imports;
 using FlowTrim.Api.Insights;
 using FlowTrim.Api.Observability;
 using FlowTrim.Application;
@@ -365,6 +366,9 @@ app.MapGet("/api/reports/subscriptions.csv", async (
 
 // Preguntas acotadas sobre los datos del propietario (HU-35). 200 / 400 / 401 / 429 / 502 / 504.
 app.MapInsightsEndpoints();
+
+// Importación CSV de suscripciones (EP-07): vista previa sin persistencia (HU-43). 200 / 400 / 401 / 413.
+app.MapSubscriptionImportEndpoints();
 
 app.Run();
 

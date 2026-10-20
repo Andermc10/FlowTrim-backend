@@ -122,8 +122,7 @@ public static class InsightsEndpoints
         }
     }
 
-    private static IResult Problem(int status, string code, string title) =>
-        Results.Problem(statusCode: status, title: title, extensions: new Dictionary<string, object?> { ["code"] = code });
+    private static IResult Problem(int status, string code, string title) => ProblemResults.WithCode(status, code, title);
 
     private static async Task WriteProblemAsync(HttpContext httpContext, int status, string code, string title, TimeSpan? retryAfter)
     {
