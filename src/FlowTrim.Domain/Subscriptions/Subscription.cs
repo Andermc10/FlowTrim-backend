@@ -229,8 +229,11 @@ public sealed class Subscription
         _ => AlertWindow.Later
     };
 
-    // Valida que la moneda tenga exactamente 3 letras A-Z (solo formato, sin lista ISO real: MVP mono-moneda).
-    private static bool IsValidCurrencyFormat(string currency)
+    /// <summary>
+    /// Valida que la moneda (ya en mayúsculas) tenga exactamente 3 letras A-Z: solo formato, sin lista ISO real.
+    /// Pública para que la importación CSV (HU-43) use la misma regla.
+    /// </summary>
+    public static bool IsValidCurrencyFormat(string currency)
     {
         if (currency.Length != 3)
         {
