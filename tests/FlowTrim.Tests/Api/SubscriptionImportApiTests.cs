@@ -13,12 +13,13 @@ using Microsoft.Extensions.Logging;
 namespace FlowTrim.Tests.Api;
 
 /// <summary>
-/// HU-43/HU-44 por HTTP: subida multipart, errores de archivo con código, límites, duplicados del propietario y ninguna
-/// persistencia.
+/// HU-43/HU-44/HU-45 por HTTP: subida multipart, errores de archivo con código, límites, duplicados del propietario,
+/// vista previa sin persistencia y confirmación que crea solo las filas válidas.
 /// </summary>
 public sealed class SubscriptionImportApiTests : IClassFixture<FlowTrimApiFactory>
 {
     private const string Route = "/api/subscription-imports/preview";
+    private const string ConfirmRoute = "/api/subscription-imports/confirm";
     private const string ValidCsv =
         "name,amount,currency,billing_cycle,next_billing_date\r\nNetflix,38900,COP,Monthly,2026-10-22\r\nBroken,abc,COP,Monthly,2026-10-22\r\n";
 
@@ -89,7 +90,7 @@ public sealed class SubscriptionImportApiTests : IClassFixture<FlowTrimApiFactor
     [Fact]
     public async Task Preview_FileOverLimit_Returns413FileTooLarge()
     {
-        var content = new byte[PreviewSubscriptionImportHandler.MaxFileBytes + 1];
+        var content = new byte[SubscriptionImportFile.MaxFileBytes + 1];
         Array.Fill(content, (byte)'a');
 
         var response = await UploadAsync(content);
@@ -180,12 +181,133 @@ public sealed class SubscriptionImportApiTests : IClassFixture<FlowTrimApiFactor
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    // ----- Confirmación (HU-45) -----
+
+    [Fact]
+    public async Task Confirm_ValidCsv_ReturnsCounts()
+    {
+        var owner = NewOwner();
+        Seed(owner, "Netflix", "COP");
+        const string csv = "name,amount,currency,billing_cycle,next_billing_date,status\n" +
+            "Netflix,38900,COP,Monthly,2026-10-22,Active\nGym,90000,COP,Monthly,2026-10-25,Inactive\n" +
+            "Park,5000,COP,Monthly,2026-10-26,\nBroken,abc,COP,Monthly,2026-10-22,Active\n";
+
+        var response = await UploadAsync(Encoding.UTF8.GetBytes(csv), owner: owner, route: ConfirmRoute);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal((4, 2, 1, 1), (body.GetProperty("total").GetInt32(), body.GetProperty("created").GetInt32(),
+            body.GetProperty("invalid").GetInt32(), body.GetProperty("duplicate").GetInt32()));
+        var mine = _factory.Subscriptions.Items.Where(s => s.OwnerId == owner).OrderBy(s => s.Name).ToList();
+        Assert.Equal(
+            [("Gym", SubscriptionStatus.Inactive), ("Netflix", SubscriptionStatus.Active), ("Park", SubscriptionStatus.Active)],
+            mine.Select(s => (s.Name, s.Status)));
+
+        // Repetir la confirmación no crea nada: todo es ya un duplicado.
+        var again = await (await UploadAsync(Encoding.UTF8.GetBytes(csv), owner: owner, route: ConfirmRoute))
+            .Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal((0, 3), (again.GetProperty("created").GetInt32(), again.GetProperty("duplicate").GetInt32()));
+        Assert.Equal(3, _factory.Subscriptions.Items.Count(s => s.OwnerId == owner));
+    }
+
+    [Fact]
+    public async Task Confirm_OtherOwnerData_IsNotUsedOrChanged()
+    {
+        var other = NewOwner();
+        Seed(other, "Spotify", "COP");
+        var owner = NewOwner();
+
+        var response = await UploadAsync(Encoding.UTF8.GetBytes(
+            "name,amount,currency,billing_cycle,next_billing_date\nSpotify,16900,COP,Monthly,2026-10-22"), owner: owner, route: ConfirmRoute);
+
+        Assert.Equal(1, (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("created").GetInt32());
+        Assert.Single(_factory.Subscriptions.Items, s => s.OwnerId == owner && s.Name == "Spotify");
+        Assert.Equal(100m, Assert.Single(_factory.Subscriptions.Items, s => s.OwnerId == other).Amount);
+    }
+
+    [Theory]
+    [InlineData("subscriptions.xlsx", "name,amount", ImportErrorCodes.UnsupportedFileType)]
+    [InlineData("subscriptions.csv", "name,currency\r\n", ImportErrorCodes.MissingColumns)]
+    public async Task Confirm_FileProblem_Returns400WithCode(string fileName, string content, string code)
+    {
+        var before = _factory.Subscriptions.Items.Count;
+
+        var response = await UploadAsync(Encoding.UTF8.GetBytes(content), fileName, route: ConfirmRoute);
+
+        await AssertProblemAsync(response, HttpStatusCode.BadRequest, code);
+        Assert.Equal(before, _factory.Subscriptions.Items.Count);
+    }
+
+    [Fact]
+    public async Task Confirm_TooManyRows_Returns413()
+    {
+        var rows = string.Concat(Enumerable.Repeat("N,1,COP,Monthly,2026-10-22\n", SubscriptionCsvImport.MaxRows + 1));
+
+        var response = await UploadAsync(
+            Encoding.UTF8.GetBytes($"name,amount,currency,billing_cycle,next_billing_date\n{rows}"), route: ConfirmRoute);
+
+        await AssertProblemAsync(response, HttpStatusCode.RequestEntityTooLarge, ImportErrorCodes.TooManyRows);
+    }
+
+    [Fact]
+    public async Task Confirm_WithoutFile_Returns400()
+    {
+        using var form = new MultipartFormDataContent { { new StringContent("x"), "other" } };
+
+        var response = await _factory.CreateClientFor(NewOwner()).PostAsync(ConfirmRoute, form);
+
+        await AssertProblemAsync(response, HttpStatusCode.BadRequest, ImportErrorCodes.FileRequired);
+    }
+
+    [Fact]
+    public async Task Confirm_PersistenceFailure_Returns500AndCreatesNothing()
+    {
+        var owner = NewOwner();
+        _factory.Subscriptions.FailNextImport = true;
+
+        var response = await UploadAsync(Encoding.UTF8.GetBytes(ValidCsv), owner: owner, route: ConfirmRoute);
+
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.DoesNotContain("Simulated", await response.Content.ReadAsStringAsync());
+        Assert.DoesNotContain(_factory.Subscriptions.Items, s => s.OwnerId == owner);
+    }
+
+    [Fact]
+    public async Task Confirm_Logs_OnlyCountsNeverContent()
+    {
+        var logs = new LogCapture();
+        using var factory = _factory.WithWebHostBuilder(builder =>
+            builder.ConfigureLogging(logging => logging.AddProvider(logs).SetMinimumLevel(LogLevel.Debug)));
+        using var form = Form(Encoding.UTF8.GetBytes(ValidCsv), "subscriptions.csv");
+
+        var response = await factory.CreateClientFor(NewOwner()).PostAsync(ConfirmRoute, form);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var line = Assert.Single(logs.Entries, entry => entry.Message.StartsWith("Subscription import confirmed", StringComparison.Ordinal));
+        Assert.Equal("Subscription import confirmed with 2 rows (1 created, 1 invalid, 0 duplicate)", line.Message);
+        Assert.DoesNotContain("Netflix", logs.AllText());
+        Assert.DoesNotContain("38900", logs.AllText());
+    }
+
+    [Fact]
+    public async Task Confirm_WithoutToken_Returns401()
+    {
+        var before = _factory.Subscriptions.Items.Count;
+        using var form = Form(Encoding.UTF8.GetBytes(ValidCsv), "subscriptions.csv");
+
+        var response = await _factory.CreateClient().PostAsync(ConfirmRoute, form);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(before, _factory.Subscriptions.Items.Count);
+    }
+
     // ----- Helpers -----
 
-    private async Task<HttpResponseMessage> UploadAsync(byte[] content, string fileName = "subscriptions.csv", string? owner = null)
+    private async Task<HttpResponseMessage> UploadAsync(
+        byte[] content, string fileName = "subscriptions.csv", string? owner = null, string route = Route)
     {
         using var form = Form(content, fileName);
-        return await _factory.CreateClientFor(owner ?? NewOwner()).PostAsync(Route, form);
+        return await _factory.CreateClientFor(owner ?? NewOwner()).PostAsync(route, form);
     }
 
     private void Seed(string owner, string name, string currency) =>

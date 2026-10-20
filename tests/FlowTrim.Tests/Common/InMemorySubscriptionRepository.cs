@@ -9,6 +9,11 @@ public sealed class InMemorySubscriptionRepository : ISubscriptionRepository
     public List<Subscription> Items { get; } = [];
     public int SaveCount { get; private set; }
 
+    /// <summary>Hace fallar la próxima importación antes de guardar nada (prueba de reversión).</summary>
+    public bool FailNextImport { get; set; }
+
+    private readonly SemaphoreSlim _importLock = new(1, 1);
+
     public Task AddAsync(Subscription subscription, CancellationToken cancellationToken)
     {
         Items.Add(subscription);
@@ -49,6 +54,31 @@ public sealed class InMemorySubscriptionRepository : ISubscriptionRepository
             .OrderBy(s => s.Name, StringComparer.Ordinal)
             .ToList();
         return Task.FromResult(all);
+    }
+
+    public async Task AddImportedAsync(
+        string ownerId,
+        Func<IReadOnlyList<Subscription>, IReadOnlyList<Subscription>> selectNew,
+        CancellationToken cancellationToken)
+    {
+        // Igual que el real: todo o nada, y en serie (la lista no es segura entre hilos).
+        await _importLock.WaitAsync(cancellationToken);
+        try
+        {
+            if (FailNextImport)
+            {
+                FailNextImport = false;
+                throw new InvalidOperationException("Simulated persistence failure.");
+            }
+
+            var created = selectNew(await ListAllAsync(ownerId, cancellationToken));
+            Items.AddRange(created);
+            SaveCount++;
+        }
+        finally
+        {
+            _importLock.Release();
+        }
     }
 
     public Task UpdateAsync(Subscription subscription, CancellationToken cancellationToken)

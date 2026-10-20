@@ -25,6 +25,7 @@ public static class DependencyInjection
         services.AddScoped<Analytics.IGetAnalyticsHandler, Analytics.GetAnalyticsHandler>();
         services.AddScoped<Reports.IExportSubscriptionsHandler, Reports.ExportSubscriptionsHandler>();
         services.AddScoped<Imports.IPreviewSubscriptionImportHandler, Imports.PreviewSubscriptionImportHandler>();
+        services.AddScoped<Imports.IConfirmSubscriptionImportHandler, Imports.ConfirmSubscriptionImportHandler>();
 
         // Herramientas financieras de solo lectura para Insights (HU-34): esta lista es la allow-list completa.
         services.AddScoped<IFinancialTool, SpendingSummaryTool>();

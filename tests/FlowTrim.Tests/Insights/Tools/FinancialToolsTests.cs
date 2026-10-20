@@ -440,6 +440,9 @@ public sealed class FinancialToolsTests
         public Task<int> CountAsync(string ownerId, CancellationToken cancellationToken) =>
             Inner.CountAsync(ownerId, cancellationToken);
 
+        public Task AddImportedAsync(string ownerId, Func<IReadOnlyList<Subscription>, IReadOnlyList<Subscription>> selectNew,
+            CancellationToken cancellationToken) => Inner.AddImportedAsync(ownerId, selectNew, cancellationToken);
+
         public Task<IReadOnlyList<Subscription>> ListActiveAsync(string ownerId, CancellationToken cancellationToken)
         {
             ReadCount++;
