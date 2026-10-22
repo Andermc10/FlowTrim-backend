@@ -12,7 +12,7 @@ Status legend: **OPEN** (not addressed) · **PLANNED** (scheduled) · **RESOLVED
 
 - **Detected:** 2026-10-14 · EP-00 task #1 (`feature/ep-00-dotnet-solution`)
 - **Area:** `FlowTrim.Api`
-- **Status:** OPEN (accepted for now — option "defer")
+- **Status:** RESOLVED (2026-10-19, backend PR #79)
 - **What:** The .NET 10 `webapi` template pulls, transitively, `Microsoft.OpenApi 2.0.0`,
   which has a known high-severity advisory (NU1903, GHSA-v5pm-xwqc-g5wc). It is not our
   code and the solution builds and tests pass with the warning present.
@@ -23,7 +23,9 @@ Status legend: **OPEN** (not addressed) · **PLANNED** (scheduled) · **RESOLVED
   (b) drop the transitive package if the template feature that brings it is not needed.
 - **Owner decision:** Ander approved deferring on 2026-10-14.
 - **Note (2026-10-18, HU-38):** the warning also appears in the CI log; warnings do not fail the
-  build, so CI stays green. Still OPEN.
+  build, so CI stays green. Still OPEN at that time.
+- **Resolution:** option (a): `FlowTrim.Api` pins `Microsoft.OpenApi` **2.12.2** with a direct
+  `PackageReference`. `dotnet build` no longer reports NU1903 (verified 2026-10-21, 0 warnings).
 
 ---
 
