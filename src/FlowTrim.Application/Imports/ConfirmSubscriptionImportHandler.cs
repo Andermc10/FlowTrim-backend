@@ -35,7 +35,8 @@ public sealed class ConfirmSubscriptionImportHandler : IConfirmSubscriptionImpor
 
     public async Task<ConfirmSubscriptionImportResult> HandleAsync(string? fileName, Stream content, CancellationToken cancellationToken)
     {
-        var result = await SubscriptionImportFile.ReadAsync(fileName, content, cancellationToken);
+        var result = await SubscriptionImportFile.ReadAsync(
+            fileName, content, ProductCalendar.Today(_timeProvider), cancellationToken);
         if (result.Preview is not { } preview)
         {
             return new ConfirmSubscriptionImportResult(null, result.FileError);

@@ -39,7 +39,9 @@ public sealed class UpdateSubscriptionHandler : IUpdateSubscriptionHandler
         var billingCycle = SubscriptionRequestValidator.ParseEnum<BillingCycle>(
             request.BillingCycle, "billingCycle", "Billing cycle", errors);
         var status = SubscriptionRequestValidator.ParseEnum<SubscriptionStatus>(request.Status, "status", "Status", errors);
-        SubscriptionRequestValidator.RequireNextBillingDate(request.NextBillingDate, errors);
+        // Solo una fecha nueva debe ser de hoy en adelante (HU-56).
+        var notBefore = request.NextBillingDate != subscription.NextBillingDate ? ProductCalendar.Today(_timeProvider) : (DateOnly?)null;
+        SubscriptionRequestValidator.RequireNextBillingDate(request.NextBillingDate, notBefore, errors);
 
         if (errors.Count > 0)
         {

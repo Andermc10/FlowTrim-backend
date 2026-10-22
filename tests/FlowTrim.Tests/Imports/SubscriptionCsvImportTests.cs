@@ -10,6 +10,9 @@ public sealed class SubscriptionCsvImportTests
 {
     private const string Header = "name,amount,currency,billing_cycle,next_billing_date";
 
+    // Hoy en el calendario del producto para estas pruebas: las fechas de las filas son posteriores.
+    private static readonly DateOnly Today = new(2026, 1, 1);
+
     [Fact]
     public void Parse_ValidRow_NormalizesValues()
     {
@@ -82,13 +85,23 @@ public sealed class SubscriptionCsvImportTests
     }
 
     [Fact]
-    public void Parse_BlankLinesAndPastDates_AreHandled()
+    public void Parse_BlankLines_KeepSpreadsheetRowNumbers()
     {
-        var preview = Preview($"{Header}\r\n\r\nNetflix,100,COP,Monthly,2020-01-01\r\n");
+        var preview = Preview($"{Header}\r\n\r\nNetflix,100,COP,Monthly,2026-01-01\r\n");
 
-        // La fila en blanco cuenta en la hoja (fila 2) pero no se valida; una fecha pasada es válida (vencida).
+        // La fila en blanco cuenta en la hoja (fila 2) pero no se valida; hoy es una fecha válida.
         var row = Assert.Single(preview.Rows);
         Assert.Equal((3, ImportRowStatus.Valid), (row.RowNumber, row.Status));
+    }
+
+    [Fact]
+    public void Parse_NextBillingDateBeforeToday_IsDateInPast()
+    {
+        var row = Assert.Single(Preview($"{Header}\nNetflix,100,COP,Monthly,2025-12-31").Rows);
+
+        Assert.Equal(ImportRowStatus.Invalid, row.Status);
+        var error = Assert.Single(row.Errors);
+        Assert.Equal(("next_billing_date", ImportErrorCodes.DateInPast), (error.Field, error.Code));
     }
 
     [Fact]
@@ -135,7 +148,7 @@ public sealed class SubscriptionCsvImportTests
     [InlineData("name,amount,currency,billing_cycle,next_billing_date\r\n\"Netflix,100", ImportErrorCodes.MalformedCsv)]
     public void Parse_FileProblem_ReturnsFileError(string text, string code)
     {
-        var result = SubscriptionCsvImport.Parse(text);
+        var result = SubscriptionCsvImport.Parse(text, Today);
 
         Assert.Null(result.Preview);
         Assert.Equal(code, result.FileError!.Code);
@@ -145,7 +158,7 @@ public sealed class SubscriptionCsvImportTests
     [Fact]
     public void Parse_MissingColumns_NamesThem()
     {
-        var error = SubscriptionCsvImport.Parse("name,currency,next_billing_date").FileError!;
+        var error = SubscriptionCsvImport.Parse("name,currency,next_billing_date", Today).FileError!;
 
         Assert.Equal("Missing required columns: amount, billing_cycle.", error.Detail);
     }
@@ -155,15 +168,15 @@ public sealed class SubscriptionCsvImportTests
     {
         var rows = string.Concat(Enumerable.Repeat("Netflix,100,COP,Monthly,2026-10-22\n", SubscriptionCsvImport.MaxRows + 1));
 
-        var error = SubscriptionCsvImport.Parse($"{Header}\n{rows}").FileError!;
+        var error = SubscriptionCsvImport.Parse($"{Header}\n{rows}", Today).FileError!;
 
         Assert.Equal((ImportErrorCodes.TooManyRows, true), (error.Code, error.TooLarge));
-        Assert.NotNull(SubscriptionCsvImport.Parse($"{Header}\n{rows[..^"Netflix,100,COP,Monthly,2026-10-22\n".Length]}").Preview);
+        Assert.NotNull(SubscriptionCsvImport.Parse($"{Header}\n{rows[..^"Netflix,100,COP,Monthly,2026-10-22\n".Length]}", Today).Preview);
     }
 
     private static SubscriptionImportPreview Preview(string text)
     {
-        var result = SubscriptionCsvImport.Parse(text);
+        var result = SubscriptionCsvImport.Parse(text, Today);
         Assert.Null(result.FileError);
         return result.Preview!;
     }

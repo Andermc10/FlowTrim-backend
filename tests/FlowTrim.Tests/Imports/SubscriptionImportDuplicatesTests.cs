@@ -8,6 +8,7 @@ namespace FlowTrim.Tests.Imports;
 public sealed class SubscriptionImportDuplicatesTests
 {
     private const string Header = "name,amount,currency,billing_cycle,next_billing_date";
+    private static readonly DateOnly Today = new(2026, 1, 1);
 
     [Fact]
     public void Classify_ExistingMatch_IsDuplicateOfExisting()
@@ -91,7 +92,7 @@ public sealed class SubscriptionImportDuplicatesTests
     [Fact]
     public void Classify_NoExistingAndNoRepeats_LeavesPreviewUnchanged()
     {
-        var parsed = SubscriptionCsvImport.Parse($"{Header}\nNetflix,1,COP,Monthly,2026-10-22\nBad,x,COP,Monthly,2026-10-22").Preview!;
+        var parsed = SubscriptionCsvImport.Parse($"{Header}\nNetflix,1,COP,Monthly,2026-10-22\nBad,x,COP,Monthly,2026-10-22", Today).Preview!;
 
         var classified = SubscriptionImportDuplicates.Classify(parsed, []);
 
@@ -106,5 +107,5 @@ public sealed class SubscriptionImportDuplicatesTests
         Subscription.Create(TestCurrentUser.DefaultSubject, name, null, 100m, currency, BillingCycle.Monthly, new DateOnly(2026, 11, 1), Clock);
 
     private static SubscriptionImportPreview Classify(string csv, params Subscription[] existing) =>
-        SubscriptionImportDuplicates.Classify(SubscriptionCsvImport.Parse(csv).Preview!, existing);
+        SubscriptionImportDuplicates.Classify(SubscriptionCsvImport.Parse(csv, Today).Preview!, existing);
 }

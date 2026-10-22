@@ -123,6 +123,37 @@ public sealed class SubscriptionManagementHandlersTests
     }
 
     [Fact]
+    public async Task Update_OverdueDateUnchanged_StillSucceeds()
+    {
+        var repo = new InMemorySubscriptionRepository();
+        var overdue = NewSubscription("Netflix", new DateOnly(2026, 10, 1));
+        repo.Items.Add(overdue);
+        var handler = new UpdateSubscriptionHandler(repo, Clock(), new TestCurrentUser());
+
+        // Renombrar una suscripción vencida sin tocar su fecha no exige moverla (HU-56).
+        var result = await handler.HandleAsync(
+            overdue.Id, ValidUpdate() with { NextBillingDate = new DateOnly(2026, 10, 1) }, CancellationToken.None);
+
+        Assert.Equal(HandlerResultKind.Success, result.Kind);
+    }
+
+    [Fact]
+    public async Task Update_DateChangedToAnotherPastDay_ReturnsInvalid()
+    {
+        var repo = new InMemorySubscriptionRepository();
+        var overdue = NewSubscription("Netflix", new DateOnly(2026, 10, 1));
+        repo.Items.Add(overdue);
+        var handler = new UpdateSubscriptionHandler(repo, Clock(), new TestCurrentUser());
+
+        var result = await handler.HandleAsync(
+            overdue.Id, ValidUpdate() with { NextBillingDate = new DateOnly(2026, 10, 5) }, CancellationToken.None);
+
+        Assert.Equal(HandlerResultKind.Invalid, result.Kind);
+        Assert.Equal(["Next billing date cannot be in the past."], result.Errors["nextBillingDate"]);
+        Assert.Equal(new DateOnly(2026, 10, 1), repo.Items[0].NextBillingDate);
+    }
+
+    [Fact]
     public async Task Update_InvalidStatus_ReturnsInvalid()
     {
         var repo = new InMemorySubscriptionRepository();

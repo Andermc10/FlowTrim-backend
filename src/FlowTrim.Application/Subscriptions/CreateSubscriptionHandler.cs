@@ -39,7 +39,8 @@ public sealed class CreateSubscriptionHandler : ICreateSubscriptionHandler
         SubscriptionRequestValidator.RequireAmount(request.Amount, errors);
         var billingCycle = SubscriptionRequestValidator.ParseEnum<BillingCycle>(
             request.BillingCycle, "billingCycle", "Billing cycle", errors);
-        SubscriptionRequestValidator.RequireNextBillingDate(request.NextBillingDate, errors);
+        SubscriptionRequestValidator.RequireNextBillingDate(
+            request.NextBillingDate, ProductCalendar.Today(_timeProvider), errors);
 
         if (errors.Count > 0)
         {

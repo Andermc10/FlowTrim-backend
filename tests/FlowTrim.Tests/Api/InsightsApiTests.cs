@@ -287,7 +287,7 @@ public sealed class InsightsApiTests : IClassFixture<FlowTrimApiFactory>
     private void Seed(string owner, string name, decimal amount, string currency) =>
         _factory.Subscriptions.Items.Add(Subscription.Create(
             owner, name, null, amount, currency, BillingCycle.Monthly,
-            DateOnly.FromDateTime(DateTime.UtcNow).AddDays(10), new FixedTimeProvider(DateTimeOffset.UtcNow)));
+            DateOnly.FromDateTime(FlowTrimApiFactory.DefaultNow.UtcDateTime).AddDays(10), new FixedTimeProvider(FlowTrimApiFactory.DefaultNow)));
 
     private static async Task AssertValidationProblemAsync(HttpResponseMessage response)
     {

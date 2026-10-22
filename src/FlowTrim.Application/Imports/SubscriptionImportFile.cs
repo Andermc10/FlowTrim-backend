@@ -14,7 +14,8 @@ public static class SubscriptionImportFile
     // UTF-8 estricto: un byte inválido es un error del archivo, no un carácter reemplazado en silencio.
     private static readonly UTF8Encoding StrictUtf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
 
-    public static async Task<SubscriptionImportResult> ReadAsync(string? fileName, Stream content, CancellationToken cancellationToken)
+    public static async Task<SubscriptionImportResult> ReadAsync(
+        string? fileName, Stream content, DateOnly today, CancellationToken cancellationToken)
     {
         if (!string.Equals(Path.GetExtension(fileName), FileExtension, StringComparison.OrdinalIgnoreCase))
         {
@@ -51,7 +52,7 @@ public static class SubscriptionImportFile
         }
 
         // El BOM de UTF-8 (lo escribe Excel y nuestro exportador) no forma parte del contenido.
-        return SubscriptionCsvImport.Parse(text.TrimStart('﻿'));
+        return SubscriptionCsvImport.Parse(text.TrimStart('﻿'), today);
     }
 
     private static SubscriptionImportResult Fail(string code, string detail) =>
