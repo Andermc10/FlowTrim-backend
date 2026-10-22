@@ -8,7 +8,7 @@ namespace FlowTrim.Application.Analytics;
 /// <summary>Caso de uso: analítica por moneda de las suscripciones activas del propietario (HU-50).</summary>
 public interface IGetAnalyticsHandler
 {
-    Task<AnalyticsResult> HandleAsync(int? months, CancellationToken cancellationToken);
+    Task<HandlerResult<AnalyticsResponse>> HandleAsync(int? months, CancellationToken cancellationToken);
 }
 
 public sealed class GetAnalyticsHandler : IGetAnalyticsHandler
@@ -27,12 +27,12 @@ public sealed class GetAnalyticsHandler : IGetAnalyticsHandler
         _currentUser = currentUser;
     }
 
-    public async Task<AnalyticsResult> HandleAsync(int? months, CancellationToken cancellationToken)
+    public async Task<HandlerResult<AnalyticsResponse>> HandleAsync(int? months, CancellationToken cancellationToken)
     {
         int window = months ?? DefaultMonths;
         if (window is < 1 or > MaxMonths)
         {
-            return AnalyticsResult.Invalid(new Dictionary<string, string[]>
+            return HandlerResult<AnalyticsResponse>.Invalid(new Dictionary<string, string[]>
             {
                 ["months"] = [$"Months must be between 1 and {MaxMonths}."],
             });
@@ -50,7 +50,7 @@ public sealed class GetAnalyticsHandler : IGetAnalyticsHandler
                 currency.ExpectedCharges.Select(m => new ExpectedChargeResponse(FormatMonth(m.Year, m.Month), m.Amount, m.Count)).ToList()))
             .ToList();
 
-        return AnalyticsResult.Success(new AnalyticsResponse(FormatMonth(referenceDate.Year, referenceDate.Month), currencies));
+        return HandlerResult<AnalyticsResponse>.Success(new AnalyticsResponse(FormatMonth(referenceDate.Year, referenceDate.Month), currencies));
     }
 
     private static string FormatMonth(int year, int month) => $"{year:D4}-{month:D2}";

@@ -44,6 +44,7 @@ public sealed class UpcomingChargesTool(IGetUpcomingChargesHandler handler) : Fi
         return Ok(
             new { upcoming.ReferenceDate, withinDays, totalCount = inWindow.Count, charges },
             [ToolAssumptions.Expected, ToolAssumptions.ActiveOnly],
-            "upcoming-charges") with { Figures = figures };
+            "upcoming-charges") with
+        { Figures = figures };
     }
 }

@@ -90,10 +90,16 @@ public sealed class SchemaTests : IAsyncLifetime
         // SQL directo: se salta el dominio para comprobar que la base de datos también protege la invariante.
         var values = new Dictionary<string, string>
         {
-            ["id"] = "gen_random_uuid()", ["owner_id"] = "'it|owner-a'", ["name"] = "'Netflix'",
-            ["amount"] = "10", ["currency"] = "'COP'", ["billing_cycle"] = "'Monthly'",
-            ["next_billing_date"] = "DATE '2026-11-01'", ["status"] = "'Active'",
-            ["created_at"] = "now()", ["updated_at"] = "now()",
+            ["id"] = "gen_random_uuid()",
+            ["owner_id"] = "'it|owner-a'",
+            ["name"] = "'Netflix'",
+            ["amount"] = "10",
+            ["currency"] = "'COP'",
+            ["billing_cycle"] = "'Monthly'",
+            ["next_billing_date"] = "DATE '2026-11-01'",
+            ["status"] = "'Active'",
+            ["created_at"] = "now()",
+            ["updated_at"] = "now()",
         };
         values[column] = value;
         var sql = $"INSERT INTO subscriptions ({string.Join(", ", values.Keys)}) VALUES ({string.Join(", ", values.Values)})";

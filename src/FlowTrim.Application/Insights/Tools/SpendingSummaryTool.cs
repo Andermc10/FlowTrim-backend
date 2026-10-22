@@ -24,6 +24,7 @@ public sealed class SpendingSummaryTool(IGetSummaryHandler handler) : FinancialT
         return Ok(
             new { currencies = summary.Currencies },
             [ToolAssumptions.Expected, ToolAssumptions.ConstantPrices, ToolAssumptions.ActiveOnly, ToolAssumptions.NoConversion],
-            "summary") with { Figures = figures };
+            "summary") with
+        { Figures = figures };
     }
 }

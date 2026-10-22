@@ -1,6 +1,6 @@
-namespace FlowTrim.Application.Subscriptions;
-
 using FlowTrim.Application.Abstractions;
+
+namespace FlowTrim.Application.Subscriptions;
 
 /// <summary>Caso de uso: eliminar una suscripción. Devuelve <c>false</c> si no existía.</summary>
 public interface IDeleteSubscriptionHandler

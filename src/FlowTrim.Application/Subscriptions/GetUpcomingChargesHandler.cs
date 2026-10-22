@@ -1,7 +1,7 @@
-namespace FlowTrim.Application.Subscriptions;
-
 using FlowTrim.Application.Abstractions;
 using FlowTrim.Application.Common;
+
+namespace FlowTrim.Application.Subscriptions;
 
 /// <summary>Caso de uso: listar los próximos cobros de las suscripciones activas con su cuenta regresiva.</summary>
 public interface IGetUpcomingChargesHandler

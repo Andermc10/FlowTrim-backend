@@ -49,27 +49,30 @@ public sealed class SimulateCancellationTool(
         }
 
         var simulation = result.Value!;
-        // Sin coincidencias no hay ahorro que mostrar: los ceros no son evidencia útil.
-        var figures = matched.Count == 0
-            ? []
-            : simulation.Currencies
-                .Where(currency => currency.SelectedMonthly > 0)
-                .SelectMany(currency => currency.Savings
-                    .Select(saving => new InsightFigure(
-                        InsightFigureKinds.Savings, "Potential savings", null, saving.Amount, currency.Currency, Months: saving.Months))
-                    .Prepend(new InsightFigure(
-                        InsightFigureKinds.SelectedMonthly, "Selected monthly spending", null, currency.SelectedMonthly, currency.Currency)))
-                .ToList();
+        // Solo las monedas con algo seleccionado: los ceros no son evidencia y el modelo tendía a narrarlos ("0 USD").
+        var affected = simulation.Currencies.Where(currency => currency.SelectedMonthly > 0).ToList();
+        var figures = affected
+            .SelectMany(currency => currency.Savings
+                .Select(saving => new InsightFigure(
+                    InsightFigureKinds.Savings, "Potential savings", null, saving.Amount, currency.Currency, Months: saving.Months))
+                .Prepend(new InsightFigure(
+                    InsightFigureKinds.SelectedMonthly, "Selected monthly spending", null, currency.SelectedMonthly, currency.Currency)))
+            .ToList();
 
-        return Ok(
-            new
-            {
-                selectedNames = matched.Select(subscription => subscription.Name).ToList(),
-                unmatchedNames,
-                simulation.Horizons,
-                simulation.Currencies,
-            },
-            [ToolAssumptions.NothingCancelled, ToolAssumptions.ConstantPrices, ToolAssumptions.ActiveOnly, ToolAssumptions.NoConversion],
-            "simulator") with { Figures = figures };
+        var data = new
+        {
+            selectedNames = matched.Select(subscription => subscription.Name).ToList(),
+            unmatchedNames,
+            simulation.Horizons,
+            currencies = affected,
+        };
+        var assumptions = new[]
+        {
+            ToolAssumptions.NothingCancelled, ToolAssumptions.ConstantPrices, ToolAssumptions.ActiveOnly, ToolAssumptions.NoConversion,
+        };
+        return Ok(data, assumptions, "simulator") with
+        {
+            Figures = figures,
+        };
     }
 }

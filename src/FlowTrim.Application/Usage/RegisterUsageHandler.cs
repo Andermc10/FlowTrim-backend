@@ -1,5 +1,6 @@
-using FlowTrim.Application.Subscriptions;
 using FlowTrim.Application.Abstractions;
+using FlowTrim.Application.Common;
+using FlowTrim.Application.Subscriptions;
 using FlowTrim.Domain.Usage;
 
 namespace FlowTrim.Application.Usage;
@@ -7,7 +8,7 @@ namespace FlowTrim.Application.Usage;
 /// <summary>Caso de uso: registrar un uso declarado para una suscripción existente.</summary>
 public interface IRegisterUsageHandler
 {
-    Task<RegisterUsageResult> HandleAsync(Guid subscriptionId, RegisterUsageRequest request, CancellationToken cancellationToken);
+    Task<HandlerResult<UsageRecordResponse>> HandleAsync(Guid subscriptionId, RegisterUsageRequest request, CancellationToken cancellationToken);
 }
 
 public sealed class RegisterUsageHandler : IRegisterUsageHandler
@@ -26,7 +27,7 @@ public sealed class RegisterUsageHandler : IRegisterUsageHandler
         _currentUser = currentUser;
     }
 
-    public async Task<RegisterUsageResult> HandleAsync(
+    public async Task<HandlerResult<UsageRecordResponse>> HandleAsync(
         Guid subscriptionId,
         RegisterUsageRequest request,
         CancellationToken cancellationToken)
@@ -35,7 +36,7 @@ public sealed class RegisterUsageHandler : IRegisterUsageHandler
         var subscription = await _subscriptionRepository.GetByIdAsync(_currentUser.GetOwnerId(), subscriptionId, cancellationToken);
         if (subscription is null)
         {
-            return RegisterUsageResult.NotFound();
+            return HandlerResult<UsageRecordResponse>.NotFound();
         }
 
         var errors = new Dictionary<string, string[]>();
@@ -51,13 +52,13 @@ public sealed class RegisterUsageHandler : IRegisterUsageHandler
 
         if (errors.Count > 0)
         {
-            return RegisterUsageResult.Invalid(errors);
+            return HandlerResult<UsageRecordResponse>.Invalid(errors);
         }
 
         // El dominio valida las reglas de valor (conteo no negativo, longitud de notas) → 400 vía middleware.
         var record = UsageRecord.Create(subscriptionId, request.UsageDate!.Value, request.UsageCount!.Value, request.Notes);
         await _usageRecordRepository.AddAsync(record, cancellationToken);
 
-        return RegisterUsageResult.Created(UsageRecordMapper.ToResponse(record));
+        return HandlerResult<UsageRecordResponse>.Success(UsageRecordMapper.ToResponse(record));
     }
 }

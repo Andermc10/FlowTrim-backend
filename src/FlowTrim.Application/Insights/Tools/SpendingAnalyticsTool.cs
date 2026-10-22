@@ -45,6 +45,7 @@ public sealed class SpendingAnalyticsTool(IGetAnalyticsHandler handler) : Financ
         return Ok(
             new { analytics.ReferenceMonth, months, currencies },
             [ToolAssumptions.Expected, ToolAssumptions.ConstantPrices, ToolAssumptions.ActiveOnly, ToolAssumptions.NoConversion],
-            "analytics") with { Figures = figures };
+            "analytics") with
+        { Figures = figures };
     }
 }
