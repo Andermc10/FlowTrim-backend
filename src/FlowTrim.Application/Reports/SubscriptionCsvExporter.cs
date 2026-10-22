@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using FlowTrim.Application.Imports;
 using FlowTrim.Domain.Subscriptions;
 
 namespace FlowTrim.Application.Reports;
@@ -16,6 +17,8 @@ public static class SubscriptionCsvExporter
     public static string Export(IEnumerable<Subscription> subscriptions)
     {
         var csv = new StringBuilder();
+        // Indica el separador a Excel: sin ella, Excel en español busca ";" y muestra todo en una columna (HU-58).
+        csv.Append(CsvDialect.SeparatorHintPrefix).Append(',').Append("\r\n");
         csv.Append(Header).Append("\r\n");
 
         foreach (var subscription in subscriptions)

@@ -45,29 +45,39 @@ public static partial class SubscriptionCsvImport
     [GeneratedRegex(@"^\d+(\.\d{1,2})?$")]
     private static partial Regex AmountPattern();
 
+    // En archivos con ";" (Excel en español) la coma también es decimal (HU-58).
+    [GeneratedRegex(@"^\d+([.,]\d{1,2})?$")]
+    private static partial Regex SpreadsheetAmountPattern();
+
     [GeneratedRegex("^[A-Za-z]+$")]
     private static partial Regex LettersOnly();
 
     /// <param name="today">Hoy en el calendario del producto: una próxima fecha de cobro anterior es inválida (HU-56).</param>
     public static SubscriptionImportResult Parse(string text, DateOnly today)
     {
+        var (dialect, content) = CsvDialect.Detect(text);
+        if (dialect is null)
+        {
+            return Fail(ImportErrorCodes.UnsupportedDelimiter, "Use a comma or a semicolon as the separator.");
+        }
+
         IReadOnlyList<CsvRecord> records;
         try
         {
-            records = CsvReader.Read(text);
+            records = CsvReader.Read(content, dialect.Delimiter);
         }
         catch (CsvFormatException exception)
         {
             return Fail(ImportErrorCodes.MalformedCsv, exception.Message);
         }
 
-        var content = records.Where(record => !record.IsBlank).ToList();
-        if (content.Count == 0)
+        var nonBlank = records.Where(record => !record.IsBlank).ToList();
+        if (nonBlank.Count == 0)
         {
             return Fail(ImportErrorCodes.EmptyFile, "The file has no header row.");
         }
 
-        var header = content[0].Cells.Select(name => name.Trim().ToLowerInvariant()).ToList();
+        var header = nonBlank[0].Cells.Select(name => name.Trim().ToLowerInvariant()).ToList();
         var repeated = header.Where(name => name.Length > 0).GroupBy(name => name).Where(group => group.Count() > 1)
             .Select(group => group.Key).ToList();
         if (repeated.Count > 0)
@@ -81,7 +91,7 @@ public static partial class SubscriptionCsvImport
             return Fail(ImportErrorCodes.MissingColumns, $"Missing required columns: {string.Join(", ", missing)}.");
         }
 
-        var dataRows = content.Skip(1).ToList();
+        var dataRows = nonBlank.Skip(1).ToList();
         if (dataRows.Count > MaxRows)
         {
             return SubscriptionImportResult.Failure(new ImportFileError(
@@ -91,14 +101,14 @@ public static partial class SubscriptionCsvImport
         // Índice de cada columna conocida, calculado una vez por archivo.
         var columns = header.Select((name, index) => (name, index)).Where(column => column.name.Length > 0)
             .ToDictionary(column => column.name, column => column.index);
-        var rows = dataRows.Select(record => ValidateRow(record, header.Count, columns, today)).ToList();
+        var rows = dataRows.Select(record => ValidateRow(record, header.Count, columns, dialect, today)).ToList();
         var ignored = header.Where(name => name.Length > 0 && !RequiredColumns.Contains(name) && !OptionalColumns.Contains(name)).ToList();
         return SubscriptionImportResult.Success(new SubscriptionImportPreview(
             rows, ImportSummary.From(rows), ignored));
     }
 
     private static ImportRow ValidateRow(
-        CsvRecord record, int columnCount, IReadOnlyDictionary<string, int> columns, DateOnly today)
+        CsvRecord record, int columnCount, IReadOnlyDictionary<string, int> columns, CsvDialect dialect, DateOnly today)
     {
         if (record.Cells.Count != columnCount)
         {
@@ -111,11 +121,11 @@ public static partial class SubscriptionCsvImport
         var errors = new List<ImportError>();
         var name = Text(Cell(SubscriptionCsvFormat.Name), SubscriptionCsvFormat.Name, Subscription.NameMaxLength, required: true, errors);
         var category = Text(Cell(SubscriptionCsvFormat.Category), SubscriptionCsvFormat.Category, Subscription.CategoryMaxLength, required: false, errors);
-        var amount = Amount(Cell(SubscriptionCsvFormat.Amount), errors);
+        var amount = Amount(Cell(SubscriptionCsvFormat.Amount), dialect, errors);
         var currency = Currency(Cell(SubscriptionCsvFormat.Currency), errors);
         var cycle = Enumeration<BillingCycle>(Cell(SubscriptionCsvFormat.BillingCycle), SubscriptionCsvFormat.BillingCycle,
             ImportErrorCodes.InvalidBillingCycle, "Use Monthly or Yearly.", required: true, errors);
-        var date = Date(Cell(SubscriptionCsvFormat.NextBillingDate), today, errors);
+        var date = Date(Cell(SubscriptionCsvFormat.NextBillingDate), dialect, today, errors);
         var status = Enumeration<SubscriptionStatus>(Cell(SubscriptionCsvFormat.Status), SubscriptionCsvFormat.Status,
             ImportErrorCodes.InvalidStatus, "Use Active or Inactive.", required: false, errors) ?? SubscriptionStatus.Active;
 
@@ -158,7 +168,7 @@ public static partial class SubscriptionCsvImport
         return value;
     }
 
-    private static decimal? Amount(string value, List<ImportError> errors)
+    private static decimal? Amount(string value, CsvDialect dialect, List<ImportError> errors)
     {
         if (value.Length == 0)
         {
@@ -166,14 +176,17 @@ public static partial class SubscriptionCsvImport
             return null;
         }
 
-        if (!AmountPattern().IsMatch(value))
+        var pattern = dialect.IsSpreadsheetLocale ? SpreadsheetAmountPattern() : AmountPattern();
+        if (!pattern.IsMatch(value))
         {
             errors.Add(new ImportError(SubscriptionCsvFormat.Amount, ImportErrorCodes.InvalidAmount,
-                "Use digits with a dot for decimals (at most 2) and no thousands separators."));
+                dialect.IsSpreadsheetLocale
+                    ? "Use digits with a comma or dot for decimals (at most 2) and no thousands separators."
+                    : "Use digits with a dot for decimals (at most 2) and no thousands separators."));
             return null;
         }
 
-        var amount = decimal.Parse(value, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture);
+        var amount = decimal.Parse(value.Replace(',', '.'), NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture);
         if (amount <= 0m)
         {
             errors.Add(new ImportError(SubscriptionCsvFormat.Amount, ImportErrorCodes.AmountNotPositive, "The amount must be greater than zero."));
@@ -220,9 +233,9 @@ public static partial class SubscriptionCsvImport
         return null;
     }
 
-    private static DateOnly? Date(string value, DateOnly today, List<ImportError> errors)
+    private static DateOnly? Date(string value, CsvDialect dialect, DateOnly today, List<ImportError> errors)
     {
-        if (DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
+        if (DateOnly.TryParseExact(value, dialect.DateFormats.ToArray(), CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
         {
             if (date >= today)
             {
@@ -236,7 +249,8 @@ public static partial class SubscriptionCsvImport
 
         errors.Add(value.Length == 0
             ? new ImportError(SubscriptionCsvFormat.NextBillingDate, ImportErrorCodes.Required, "The next billing date is required.")
-            : new ImportError(SubscriptionCsvFormat.NextBillingDate, ImportErrorCodes.InvalidDate, "Use a real date in yyyy-MM-dd format."));
+            : new ImportError(SubscriptionCsvFormat.NextBillingDate, ImportErrorCodes.InvalidDate,
+                dialect.IsSpreadsheetLocale ? "Use a real date in yyyy-MM-dd or dd/MM/yyyy format." : "Use a real date in yyyy-MM-dd format."));
         return null;
     }
 
