@@ -16,16 +16,19 @@ public sealed class PreviewSubscriptionImportHandler : IPreviewSubscriptionImpor
 {
     private readonly ISubscriptionRepository _repository;
     private readonly ICurrentUser _currentUser;
+    private readonly TimeProvider _timeProvider;
 
-    public PreviewSubscriptionImportHandler(ISubscriptionRepository repository, ICurrentUser currentUser)
+    public PreviewSubscriptionImportHandler(ISubscriptionRepository repository, ICurrentUser currentUser, TimeProvider timeProvider)
     {
         _repository = repository;
         _currentUser = currentUser;
+        _timeProvider = timeProvider;
     }
 
     public async Task<SubscriptionImportResult> HandleAsync(string? fileName, Stream content, CancellationToken cancellationToken)
     {
-        var result = await SubscriptionImportFile.ReadAsync(fileName, content, cancellationToken);
+        var result = await SubscriptionImportFile.ReadAsync(
+            fileName, content, ProductCalendar.Today(_timeProvider), cancellationToken);
         if (result.Preview is not { } preview || preview.Summary.Valid == 0)
         {
             return result;

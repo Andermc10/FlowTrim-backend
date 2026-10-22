@@ -48,7 +48,8 @@ public static partial class SubscriptionCsvImport
     [GeneratedRegex("^[A-Za-z]+$")]
     private static partial Regex LettersOnly();
 
-    public static SubscriptionImportResult Parse(string text)
+    /// <param name="today">Hoy en el calendario del producto: una próxima fecha de cobro anterior es inválida (HU-56).</param>
+    public static SubscriptionImportResult Parse(string text, DateOnly today)
     {
         IReadOnlyList<CsvRecord> records;
         try
@@ -90,13 +91,14 @@ public static partial class SubscriptionCsvImport
         // Índice de cada columna conocida, calculado una vez por archivo.
         var columns = header.Select((name, index) => (name, index)).Where(column => column.name.Length > 0)
             .ToDictionary(column => column.name, column => column.index);
-        var rows = dataRows.Select(record => ValidateRow(record, header.Count, columns)).ToList();
+        var rows = dataRows.Select(record => ValidateRow(record, header.Count, columns, today)).ToList();
         var ignored = header.Where(name => name.Length > 0 && !RequiredColumns.Contains(name) && !OptionalColumns.Contains(name)).ToList();
         return SubscriptionImportResult.Success(new SubscriptionImportPreview(
             rows, ImportSummary.From(rows), ignored));
     }
 
-    private static ImportRow ValidateRow(CsvRecord record, int columnCount, IReadOnlyDictionary<string, int> columns)
+    private static ImportRow ValidateRow(
+        CsvRecord record, int columnCount, IReadOnlyDictionary<string, int> columns, DateOnly today)
     {
         if (record.Cells.Count != columnCount)
         {
@@ -113,7 +115,7 @@ public static partial class SubscriptionCsvImport
         var currency = Currency(Cell(SubscriptionCsvFormat.Currency), errors);
         var cycle = Enumeration<BillingCycle>(Cell(SubscriptionCsvFormat.BillingCycle), SubscriptionCsvFormat.BillingCycle,
             ImportErrorCodes.InvalidBillingCycle, "Use Monthly or Yearly.", required: true, errors);
-        var date = Date(Cell(SubscriptionCsvFormat.NextBillingDate), errors);
+        var date = Date(Cell(SubscriptionCsvFormat.NextBillingDate), today, errors);
         var status = Enumeration<SubscriptionStatus>(Cell(SubscriptionCsvFormat.Status), SubscriptionCsvFormat.Status,
             ImportErrorCodes.InvalidStatus, "Use Active or Inactive.", required: false, errors) ?? SubscriptionStatus.Active;
 
@@ -218,11 +220,18 @@ public static partial class SubscriptionCsvImport
         return null;
     }
 
-    private static DateOnly? Date(string value, List<ImportError> errors)
+    private static DateOnly? Date(string value, DateOnly today, List<ImportError> errors)
     {
         if (DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
         {
-            return date;
+            if (date >= today)
+            {
+                return date;
+            }
+
+            errors.Add(new ImportError(SubscriptionCsvFormat.NextBillingDate, ImportErrorCodes.DateInPast,
+                "The next billing date cannot be in the past. Use the next expected charge date."));
+            return null;
         }
 
         errors.Add(value.Length == 0

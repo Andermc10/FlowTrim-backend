@@ -16,15 +16,18 @@ public sealed class RegisterUsageHandler : IRegisterUsageHandler
     private readonly ISubscriptionRepository _subscriptionRepository;
     private readonly IUsageRecordRepository _usageRecordRepository;
     private readonly ICurrentUser _currentUser;
+    private readonly TimeProvider _timeProvider;
 
     public RegisterUsageHandler(
         ISubscriptionRepository subscriptionRepository,
         IUsageRecordRepository usageRecordRepository,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        TimeProvider timeProvider)
     {
         _subscriptionRepository = subscriptionRepository;
         _usageRecordRepository = usageRecordRepository;
         _currentUser = currentUser;
+        _timeProvider = timeProvider;
     }
 
     public async Task<HandlerResult<UsageRecordResponse>> HandleAsync(
@@ -43,6 +46,11 @@ public sealed class RegisterUsageHandler : IRegisterUsageHandler
         if (request.UsageDate is null)
         {
             errors["usageDate"] = ["Usage date is required."];
+        }
+        else if (request.UsageDate > ProductCalendar.Today(_timeProvider))
+        {
+            // El uso es declarado: no puede haber ocurrido después de hoy (HU-56).
+            errors["usageDate"] = ["Usage date cannot be in the future."];
         }
 
         if (request.UsageCount is null)

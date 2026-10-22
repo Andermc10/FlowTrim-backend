@@ -68,6 +68,7 @@ public static class ImportErrorCodes
     public const string InvalidCurrency = "invalid_currency";
     public const string InvalidBillingCycle = "invalid_billing_cycle";
     public const string InvalidDate = "invalid_date";
+    public const string DateInPast = "date_in_past";
     public const string InvalidStatus = "invalid_status";
     public const string WrongCellCount = "wrong_cell_count";
 
