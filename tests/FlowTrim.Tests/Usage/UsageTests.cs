@@ -12,6 +12,9 @@ public sealed class UsageTests
     private static readonly DateTimeOffset FixedNow = new(2026, 10, 14, 6, 30, 0, TimeSpan.Zero);
     private static readonly DateOnly UsageDate = new(2026, 10, 10);
 
+    // "Ahora" del registro de usos: fin de año, para que las fechas de las pruebas no sean futuras (HU-56).
+    private static readonly DateTimeOffset RegisterNow = new(2026, 12, 31, 12, 0, 0, TimeSpan.Zero);
+
     private static Subscription NewSubscription() =>
         Subscription.Create(TestCurrentUser.DefaultSubject, "Netflix", null, 10m, "COP", BillingCycle.Monthly, new DateOnly(2026, 11, 1), new FixedTimeProvider(FixedNow));
 
@@ -74,7 +77,7 @@ public sealed class UsageTests
         var usage = new InMemoryUsageRecordRepository();
         var currentUser = new TestCurrentUser();
         return (
-            new RegisterUsageHandler(subs, usage, currentUser),
+            new RegisterUsageHandler(subs, usage, currentUser, new FixedTimeProvider(RegisterNow)),
             new ListUsageHandler(subs, usage, currentUser),
             subs,
             usage);
@@ -102,6 +105,25 @@ public sealed class UsageTests
 
         Assert.Equal(HandlerResultKind.Success, result.Kind);
         Assert.Equal(subscription.Id, result.Value!.SubscriptionId);
+        Assert.Single(usage.Items);
+    }
+
+    [Fact]
+    public async Task Register_FutureDate_ReturnsInvalid()
+    {
+        var subs = new InMemorySubscriptionRepository();
+        var usage = new InMemoryUsageRecordRepository();
+        var subscription = NewSubscription();
+        subs.Items.Add(subscription);
+        var register = new RegisterUsageHandler(subs, usage, new TestCurrentUser(), new FixedTimeProvider(FixedNow));
+
+        // FixedNow es 2026-10-14 en Bogotá: el 15 todavía no ha ocurrido.
+        var future = await register.HandleAsync(subscription.Id, new RegisterUsageRequest(new DateOnly(2026, 10, 15), 1, null), CancellationToken.None);
+        var today = await register.HandleAsync(subscription.Id, new RegisterUsageRequest(new DateOnly(2026, 10, 14), 1, null), CancellationToken.None);
+
+        Assert.Equal(HandlerResultKind.Invalid, future.Kind);
+        Assert.Equal(["Usage date cannot be in the future."], future.Errors["usageDate"]);
+        Assert.Equal(HandlerResultKind.Success, today.Kind);
         Assert.Single(usage.Items);
     }
 

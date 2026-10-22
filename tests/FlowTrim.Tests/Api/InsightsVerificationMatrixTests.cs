@@ -23,7 +23,8 @@ public sealed class InsightsVerificationMatrixTests : IClassFixture<FlowTrimApiF
     private const string Route = "/api/insights/questions";
     private const string WrongAnswer = "You pay exactly 1 COP for everything.";
 
-    private static readonly DateOnly Today = DateOnly.FromDateTime(DateTime.UtcNow);
+    // El mismo "hoy" que el reloj fijo de la API en las pruebas (FlowTrimApiFactory.DefaultNow, Bogotá).
+    private static readonly DateOnly Today = DateOnly.FromDateTime(FlowTrimApiFactory.DefaultNow.ToOffset(TimeSpan.FromHours(-5)).DateTime);
 
     private readonly FlowTrimApiFactory _factory;
     private readonly List<IDisposable> _hosts = [];
@@ -203,7 +204,7 @@ public sealed class InsightsVerificationMatrixTests : IClassFixture<FlowTrimApiF
         BillingCycle cycle = BillingCycle.Monthly, DateOnly? next = null)
     {
         var subscription = Subscription.Create(owner, name, null, amount, currency, cycle,
-            next ?? Today.AddDays(15), new FixedTimeProvider(DateTimeOffset.UtcNow.AddDays(-30)));
+            next ?? Today.AddDays(15), new FixedTimeProvider(FlowTrimApiFactory.DefaultNow.AddDays(-30)));
         _factory.Subscriptions.Items.Add(subscription);
         return subscription;
     }

@@ -25,6 +25,44 @@ public sealed class CreateSubscriptionHandlerTests
         string? category = "Streaming") =>
         new(name, category, amount, currency, billingCycle, SampleDate);
 
+    // ----- HU-56: la próxima fecha de cobro es de hoy en adelante (calendario de Bogotá) -----
+
+    [Fact]
+    public async Task HandleAsync_NextBillingDateBeforeToday_ReturnsInvalidAndPersistsNothing()
+    {
+        var (handler, repo) = BuildHandler();
+
+        var result = await handler.HandleAsync(ValidRequest() with { NextBillingDate = new DateOnly(2026, 10, 13) }, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(["Next billing date cannot be in the past."], result.Errors["nextBillingDate"]);
+        Assert.Empty(repo.Items);
+    }
+
+    [Fact]
+    public async Task HandleAsync_NextBillingDateToday_Succeeds()
+    {
+        var (handler, _) = BuildHandler();
+
+        var result = await handler.HandleAsync(ValidRequest() with { NextBillingDate = new DateOnly(2026, 10, 14) }, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+    }
+
+    [Fact]
+    public async Task HandleAsync_LateEveningInBogota_UsesTheBogotaDayNotTheUtcDay()
+    {
+        // 2026-10-15 03:00 UTC es 2026-10-14 22:00 en Bogotá: "hoy" sigue siendo el 14.
+        var handler = new CreateSubscriptionHandler(
+            new InMemorySubscriptionRepository(),
+            new FixedTimeProvider(new DateTimeOffset(2026, 10, 15, 3, 0, 0, TimeSpan.Zero)),
+            new TestCurrentUser());
+
+        var result = await handler.HandleAsync(ValidRequest() with { NextBillingDate = new DateOnly(2026, 10, 14) }, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+    }
+
     [Fact]
     public async Task HandleAsync_WithValidRequest_PersistsAndReturnsResponse()
     {

@@ -34,6 +34,12 @@ public sealed class FlowTrimApiFactory : WebApplicationFactory<Program>
 
     public InMemoryUsageRecordRepository UsageRecords { get; } = new();
 
+    /// <summary>"Ahora" de la API en las pruebas: 2026-10-20 10:00 en Bogotá (hoy = 2026-10-20 en el calendario del producto).</summary>
+    public static readonly DateTimeOffset DefaultNow = new(2026, 10, 20, 15, 0, 0, TimeSpan.Zero);
+
+    /// <summary>Reloj fijo para que las reglas de fecha (HU-56) no dependan del día en que corren las pruebas.</summary>
+    public TimeProvider Clock { get; init; } = new FixedTimeProvider(DefaultNow);
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         // Entorno propio: no carga User Secrets ni appsettings.Development.json del desarrollador.
@@ -51,6 +57,7 @@ public sealed class FlowTrimApiFactory : WebApplicationFactory<Program>
             services.AddAuthentication(TestAuthenticationHandler.SchemeName)
                 .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>(
                     TestAuthenticationHandler.SchemeName, _ => { });
+            services.AddSingleton(Clock);
 
             if (DatabaseConnectionString is not null)
             {
