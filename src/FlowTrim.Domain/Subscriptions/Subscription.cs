@@ -142,6 +142,27 @@ public sealed class Subscription
         UpdatedAt = timeProvider.GetUtcNow();
     }
 
+    /// <summary>
+    /// Marca el cobro actual como pagado: la próxima fecha avanza exactamente un ciclo desde la actual (mensual +1 mes,
+    /// anual +1 año). <see cref="DateOnly.AddMonths"/> ajusta el fin de mes (31 ene → 28 feb) y los meses siguientes
+    /// conservan ese día. No registra ningún pago: FlowTrim sigue sin confirmar transacciones (HU-57).
+    /// </summary>
+    public void AdvanceBillingDate(TimeProvider timeProvider)
+    {
+        if (Status != SubscriptionStatus.Active)
+        {
+            throw new DomainValidationException("status", "Only active subscriptions can be marked as paid.");
+        }
+
+        NextBillingDate = BillingCycle switch
+        {
+            BillingCycle.Monthly => NextBillingDate.AddMonths(1),
+            BillingCycle.Yearly => NextBillingDate.AddYears(1),
+            _ => throw new InvalidOperationException($"Unsupported billing cycle: {BillingCycle}"),
+        };
+        UpdatedAt = timeProvider.GetUtcNow();
+    }
+
     // Valida y normaliza los campos comunes a creación y actualización. Lanza ante la primera invariante
     // incumplida. Devuelve los valores ya normalizados (nombre recortado, importe redondeado, moneda en mayúsculas).
     private static (string Name, string? Category, decimal Amount, string Currency) ValidateAndNormalize(
