@@ -22,7 +22,13 @@ public sealed class SubscriptionCsvExporterTests
         return subscription;
     }
 
-    private static string[] Lines(string csv) => csv.Split("\r\n");
+    // La primera línea es siempre la indicación de separador para Excel (HU-58); el resto empieza en la cabecera.
+    private static string[] Lines(string csv)
+    {
+        var lines = csv.Split("\r\n");
+        Assert.Equal("sep=,", lines[0]);
+        return lines[1..];
+    }
 
     [Fact]
     public void Export_WritesHeaderAndInvariantRowsWithCrlf()
@@ -39,7 +45,7 @@ public sealed class SubscriptionCsvExporterTests
     [Fact]
     public void Export_WithoutSubscriptions_WritesOnlyTheHeader()
     {
-        Assert.Equal(SubscriptionCsvExporter.Header + "\r\n", SubscriptionCsvExporter.Export([]));
+        Assert.Equal("sep=,\r\n" + SubscriptionCsvExporter.Header + "\r\n", SubscriptionCsvExporter.Export([]));
     }
 
     [Theory]

@@ -79,6 +79,7 @@ public static class ImportErrorCodes
     public const string MissingColumns = "missing_columns";
     public const string DuplicateColumns = "duplicate_columns";
     public const string MalformedCsv = "malformed_csv";
+    public const string UnsupportedDelimiter = "unsupported_delimiter";
     public const string FileTooLarge = "file_too_large";
     public const string TooManyRows = "too_many_rows";
 }

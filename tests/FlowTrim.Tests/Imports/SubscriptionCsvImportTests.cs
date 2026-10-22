@@ -174,6 +174,74 @@ public sealed class SubscriptionCsvImportTests
         Assert.NotNull(SubscriptionCsvImport.Parse($"{Header}\n{rows[..^"Netflix,100,COP,Monthly,2026-10-22\n".Length]}", Today).Preview);
     }
 
+    // ----- HU-58: archivos de hoja de cálculo -----
+
+    [Theory]
+    [InlineData("sep=,\r\nname,amount", ',', "name,amount")]
+    [InlineData("SEP=;\nname;amount", ';', "name;amount")]
+    [InlineData("name;amount;currency\r\n", ';', "name;amount;currency\r\n")]
+    [InlineData("name,amount;x\r\n", ',', "name,amount;x\r\n")]
+    public void Detect_SeparatorHintOrHeader_PicksTheDelimiter(string text, char delimiter, string content)
+    {
+        var (dialect, rest) = CsvDialect.Detect(text);
+
+        Assert.Equal(delimiter, dialect!.Delimiter);
+        Assert.Equal(content, rest);
+    }
+
+    [Fact]
+    public void Parse_UnsupportedSeparatorHint_IsAFileError()
+    {
+        var error = SubscriptionCsvImport.Parse($"sep=|\n{Header}", Today).FileError!;
+
+        Assert.Equal(ImportErrorCodes.UnsupportedDelimiter, error.Code);
+    }
+
+    [Fact]
+    public void Parse_FileSavedByExcelInSpanish_IsValid()
+    {
+        // Excel con configuración de Colombia: ";" como separador, coma decimal y fechas día/mes/año.
+        var preview = Preview(
+            "name;amount;currency;billing_cycle;next_billing_date;category\r\n" +
+            "Netflix;38900;COP;Monthly;05/11/2026;Streaming\r\n" +
+            "\"Café, Plus\";16,99;USD;Yearly;2026-12-01;\r\n" +
+            "Gym;90000.5;COP;Monthly;7/1/2027;Health\r\n");
+
+        Assert.All(preview.Rows, row => Assert.Equal(ImportRowStatus.Valid, row.Status));
+        Assert.Equal(
+            [("Netflix", 38900m, new DateOnly(2026, 11, 5)), ("Café, Plus", 16.99m, new DateOnly(2026, 12, 1)), ("Gym", 90000.5m, new DateOnly(2027, 1, 7))],
+            preview.Rows.Select(row => (row.Values!.Name, row.Values.Amount, row.Values.NextBillingDate)));
+    }
+
+    [Theory]
+    [InlineData("Netflix;38.900,5;COP;Monthly;05/11/2026", "amount", ImportErrorCodes.InvalidAmount)]
+    [InlineData("Netflix;16,999;COP;Monthly;05/11/2026", "amount", ImportErrorCodes.InvalidAmount)]
+    [InlineData("Netflix;100;COP;Monthly;31/02/2026", "next_billing_date", ImportErrorCodes.InvalidDate)]
+    public void Parse_SemicolonFile_StillRejectsAmbiguousValues(string line, string field, string code)
+    {
+        var row = Assert.Single(Preview($"name;amount;currency;billing_cycle;next_billing_date\n{line}").Rows);
+
+        var error = Assert.Single(row.Errors);
+        Assert.Equal((field, code), (error.Field, error.Code));
+    }
+
+    [Fact]
+    public void Parse_CommaFile_KeepsStrictNumbersAndIsoDates()
+    {
+        var row = Assert.Single(Preview($"{Header}\nNetflix,100,COP,Monthly,05/11/2026").Rows);
+
+        Assert.Equal(ImportErrorCodes.InvalidDate, Assert.Single(row.Errors).Code);
+    }
+
+    [Fact]
+    public void Parse_SeparatorHint_IsNotARow_HeaderStaysRowOne()
+    {
+        var row = Assert.Single(Preview($"sep=,\r\n{Header}\r\nNetflix,100,COP,Monthly,2026-11-05\r\n").Rows);
+
+        // Excel tampoco muestra la línea sep=: la primera fila de datos es la 2.
+        Assert.Equal((2, ImportRowStatus.Valid), (row.RowNumber, row.Status));
+    }
+
     private static SubscriptionImportPreview Preview(string text)
     {
         var result = SubscriptionCsvImport.Parse(text, Today);

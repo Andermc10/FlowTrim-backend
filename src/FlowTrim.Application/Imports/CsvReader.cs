@@ -17,13 +17,13 @@ public sealed class CsvFormatException(int rowNumber)
 }
 
 /// <summary>
-/// Lector CSV RFC 4180 mínimo (HU-43): separador coma, comillas dobles (las comillas se duplican dentro de una
+/// Lector CSV RFC 4180 mínimo (HU-43): separador coma (o punto y coma, HU-58), comillas dobles (las comillas se duplican dentro de una
 /// celda citada), saltos de línea dentro de comillas, CRLF o LF y salto final opcional. Sin dependencias, igual que
 /// el exportador. Las filas se numeran como en una hoja de cálculo: un registro con saltos internos ocupa una fila.
 /// </summary>
 public static class CsvReader
 {
-    public static IReadOnlyList<CsvRecord> Read(string text)
+    public static IReadOnlyList<CsvRecord> Read(string text, char delimiter = ',')
     {
         var records = new List<CsvRecord>();
         var cells = new List<string>();
@@ -60,7 +60,7 @@ public static class CsvReader
                     inQuotes = true;
                     quotedCellRow = records.Count + 1;
                     break;
-                case ',':
+                case var separator when separator == delimiter:
                     cells.Add(cell.ToString());
                     cell.Clear();
                     break;

@@ -31,9 +31,10 @@ public sealed class CsvExportApiTests : IClassFixture<FlowTrimApiFactory>
         var csv = await ReadCsvAsync(await _factory.CreateClientFor(OwnerA).GetAsync(Url));
 
         var lines = csv.Split("\r\n", StringSplitOptions.RemoveEmptyEntries);
-        Assert.Equal(3, lines.Length);
-        Assert.StartsWith("Netflix,", lines[1]);
-        Assert.StartsWith("Spotify,", lines[2]);
+        Assert.Equal(4, lines.Length);
+        Assert.Equal("sep=,", lines[0]);
+        Assert.StartsWith("Netflix,", lines[2]);
+        Assert.StartsWith("Spotify,", lines[3]);
         Assert.DoesNotContain("Gym", csv);
     }
 
@@ -57,7 +58,7 @@ public sealed class CsvExportApiTests : IClassFixture<FlowTrimApiFactory>
     {
         var csv = await ReadCsvAsync(await _factory.CreateClientFor(OwnerA).GetAsync(Url));
 
-        Assert.Equal("name,category,amount,currency,billing_cycle,monthly_equivalent,next_billing_date,status\r\n", csv);
+        Assert.Equal("sep=,\r\nname,category,amount,currency,billing_cycle,monthly_equivalent,next_billing_date,status\r\n", csv);
     }
 
     [Fact]
