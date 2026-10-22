@@ -7,7 +7,7 @@
 [![Backend CI](https://github.com/Andermc10/FlowTrim-backend/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Andermc10/FlowTrim-backend/actions/workflows/ci.yml)
 ![.NET 10](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet&logoColor=white)
 ![PostgreSQL 17](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-427%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-457%20passing-2ea44f)
 ![Auth](https://img.shields.io/badge/auth-OIDC%20%2F%20JWT-EB5424?logo=auth0&logoColor=white)
 
 [Frontend](https://github.com/Andermc10/FlowTrim-frontend) · [Specs & backlog](https://github.com/Andermc10/FlowTrim-tracker) · [Operations runbook](https://github.com/Andermc10/FlowTrim-tracker/blob/main/docs/OPERATIONS.md)
@@ -76,7 +76,7 @@ Every route except `/api/health` needs a bearer token (`401` without it, `403` i
 | Area | Routes |
 |---|---|
 | Health | `GET /api/health` → `200` or `503`, no internals |
-| Subscriptions | `POST · GET /api/subscriptions` · `GET · PUT · DELETE /api/subscriptions/{id}` · `GET /api/subscriptions/upcoming` |
+| Subscriptions | `POST · GET /api/subscriptions` · `GET · PUT · DELETE /api/subscriptions/{id}` · `GET /api/subscriptions/upcoming` · `POST /api/subscriptions/{id}/mark-paid` |
 | Usage | `POST · GET /api/subscriptions/{id}/usage-records` · `GET /api/subscriptions/{id}/cost-per-use?from=&to=` |
 | Spending | `GET /api/summary` · `POST /api/simulations` · `GET /api/analytics?months=12` · `GET /api/reports/subscriptions.csv` |
 | Import | `POST /api/subscription-imports/preview` · `POST /api/subscription-imports/confirm` (multipart `file`) |
@@ -87,7 +87,7 @@ Errors are RFC 7807 `ProblemDetails`: `400` with field errors, `404`, and a gene
 <details>
 <summary><b>Import rules</b></summary>
 
-Same format as the export, so an exported file imports again: `.csv`, UTF-8 (BOM allowed), at most 256 KB and 500 rows; required `name, amount, currency, billing_cycle, next_billing_date`, optional `category, status`. A row that repeats one of your subscriptions (same name ignoring case, same currency) or an earlier row is a `duplicate` and is never created. Confirmation re-sends the same file, re-checks everything inside one transaction serialized per user (`pg_advisory_xact_lock`) and is idempotent. Full reference: [SUBSCRIPTION-CSV-FORMAT.md](https://github.com/Andermc10/FlowTrim-tracker/blob/main/docs/SUBSCRIPTION-CSV-FORMAT.md).
+Same format as the export, so an exported file imports again: `.csv`, UTF-8 (BOM allowed), at most 256 KB and 500 rows; required `name, amount, currency, billing_cycle, next_billing_date` (today or later), optional `category, status`. Excel's semicolon files (decimal comma, `dd/MM/yyyy`) and a `sep=` first line are also accepted. A row that repeats one of your subscriptions (same name ignoring case, same currency) or an earlier row is a `duplicate` and is never created. Confirmation re-sends the same file, re-checks everything inside one transaction serialized per user (`pg_advisory_xact_lock`) and is idempotent. Full reference: [SUBSCRIPTION-CSV-FORMAT.md](https://github.com/Andermc10/FlowTrim-tracker/blob/main/docs/SUBSCRIPTION-CSV-FORMAT.md).
 
 </details>
 
@@ -116,7 +116,7 @@ Outside Development the API enables HTTPS redirection and HSTS, writes JSON logs
 ## Tests
 
 ```bash
-dotnet test FlowTrim.slnx                                    # 427 tests (needs Docker for the PostgreSQL ones)
+dotnet test FlowTrim.slnx                                    # 457 tests (needs Docker for the PostgreSQL ones)
 dotnet test FlowTrim.slnx --filter "Category!=Integration"   # fast tests only, no Docker
 ```
 
