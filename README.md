@@ -87,7 +87,7 @@ Errors are RFC 7807 `ProblemDetails`: `400` with field errors, `404`, and a gene
 <details>
 <summary><b>Import rules</b></summary>
 
-Same format as the export, so an exported file imports again: `.csv`, UTF-8 (BOM allowed), at most 256 KB and 500 rows; required `name, amount, currency, billing_cycle, next_billing_date`, optional `category, status`. A row that repeats one of your subscriptions (same name ignoring case, same currency) or an earlier row is a `duplicate` and is never created. Confirmation re-sends the same file, re-checks everything inside one transaction serialized per user (`pg_advisory_xact_lock`) and is idempotent. Full reference: [SUBSCRIPTION-CSV-FORMAT.md](https://github.com/Andermc10/FlowTrim-tracker/blob/main/docs/SUBSCRIPTION-CSV-FORMAT.md).
+Same format as the export, so an exported file imports again: `.csv`, UTF-8 (BOM allowed), at most 256 KB and 500 rows; required `name, amount, currency, billing_cycle, next_billing_date` (today or later), optional `category, status`. Excel's semicolon files (decimal comma, `dd/MM/yyyy`) and a `sep=` first line are also accepted. A row that repeats one of your subscriptions (same name ignoring case, same currency) or an earlier row is a `duplicate` and is never created. Confirmation re-sends the same file, re-checks everything inside one transaction serialized per user (`pg_advisory_xact_lock`) and is idempotent. Full reference: [SUBSCRIPTION-CSV-FORMAT.md](https://github.com/Andermc10/FlowTrim-tracker/blob/main/docs/SUBSCRIPTION-CSV-FORMAT.md).
 
 </details>
 
