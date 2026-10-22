@@ -123,8 +123,9 @@ builder.Services.AddOptions<CorsOptions>()
                 .WithMethods("GET", "POST", "PUT", "DELETE")
                 // El token viaja en la cabecera Authorization; no se permiten cookies (sin AllowCredentials).
                 .WithHeaders("Accept", "Content-Type", "Authorization")
-                // El navegador solo deja leer cabeceras expuestas: Angular muestra la referencia del error.
-                .WithExposedHeaders(CorrelationIdMiddleware.HeaderName, "Retry-After")));
+                // El navegador solo deja leer cabeceras expuestas: Angular muestra la referencia del error, la espera
+                // de Insights y el nombre del CSV exportado (sin Content-Disposition tendría que inventarlo).
+                .WithExposedHeaders(CorrelationIdMiddleware.HeaderName, "Retry-After", "Content-Disposition")));
 
 var app = builder.Build();
 

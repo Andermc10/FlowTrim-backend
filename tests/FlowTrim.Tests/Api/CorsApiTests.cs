@@ -23,6 +23,21 @@ public sealed class CorsApiTests : IClassFixture<FlowTrimApiFactory>
         Assert.False(response.Headers.Contains("Access-Control-Allow-Credentials"));
     }
 
+    [Fact]
+    public async Task Cors_AllowedOrigin_ExposesHeadersTheFrontendReads()
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/health");
+        request.Headers.Add("Origin", FlowTrimApiFactory.TestFrontendOrigin);
+
+        var response = await _factory.CreateClient().SendAsync(request);
+
+        // Referencia de error (HU-41), espera de Insights (HU-36) y nombre del CSV exportado (HU-52).
+        var exposed = string.Join(',', response.Headers.GetValues("Access-Control-Expose-Headers"));
+        Assert.Contains("X-Correlation-ID", exposed, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Retry-After", exposed, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Content-Disposition", exposed, StringComparison.OrdinalIgnoreCase);
+    }
+
     [Theory]
     [InlineData("https://evil.example.com")]
     [InlineData("http://app.flowtrim.test")]
