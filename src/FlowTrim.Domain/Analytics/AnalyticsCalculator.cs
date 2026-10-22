@@ -52,7 +52,10 @@ public static class AnalyticsCalculator
             .Select(group =>
             {
                 decimal amount = group.Sum(s => s.GetMonthlyEquivalent());
-                decimal share = Math.Round(amount / monthlyTotal * 100m, 1, MidpointRounding.AwayFromZero);
+                // Un plan anual de 0.05 o menos equivale a 0.00 al mes: el total puede ser cero y no se divide.
+                decimal share = monthlyTotal == 0m
+                    ? 0m
+                    : Math.Round(amount / monthlyTotal * 100m, 1, MidpointRounding.AwayFromZero);
                 return new CategorySpend(group.Key, amount, share, group.Count());
             })
             .OrderByDescending(c => c.MonthlyEquivalent)

@@ -25,6 +25,16 @@ public sealed class AnalyticsCalculatorTests
     }
 
     [Fact]
+    public void ByCategory_MonthlyTotalRoundsToZero_ShareIsZeroInsteadOfDividingByZero()
+    {
+        // 0.05 al año → 0.004 al mes, que se redondea a 0.00: el total de la moneda es cero.
+        var currency = Assert.Single(AnalyticsCalculator.Calculate([Make("Tiny", 0.05m, BillingCycle.Yearly)], Reference, 12));
+
+        Assert.Equal(0m, currency.MonthlyTotal);
+        Assert.Equal(0m, Assert.Single(currency.ByCategory).Share);
+    }
+
+    [Fact]
     public void Calculate_SpecExample_MatchesMonthlyTotalsAndExpectedCharges()
     {
         var result = AnalyticsCalculator.Calculate(
