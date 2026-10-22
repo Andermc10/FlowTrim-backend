@@ -1,3 +1,4 @@
+using FlowTrim.Application.Common;
 using FlowTrim.Application.Simulations;
 using FlowTrim.Application.Subscriptions;
 using FlowTrim.Application.Summaries;
@@ -51,7 +52,7 @@ public sealed class OwnerIsolationTests
                 "Active"),
             CancellationToken.None);
 
-        Assert.Equal(UpdateSubscriptionResult.ResultKind.NotFound, updateResult.Kind);
+        Assert.Equal(HandlerResultKind.NotFound, updateResult.Kind);
         Assert.False(await delete.HandleAsync(subscription.Id, CancellationToken.None));
         Assert.Equal("Owner B", subscription.Name);
     }

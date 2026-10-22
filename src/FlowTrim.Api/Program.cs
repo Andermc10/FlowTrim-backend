@@ -1,17 +1,13 @@
 using FlowTrim.Api.Authentication;
 using FlowTrim.Api.Cors;
+using FlowTrim.Api.Health;
 using FlowTrim.Api.Imports;
 using FlowTrim.Api.Insights;
 using FlowTrim.Api.Observability;
+using FlowTrim.Api.Spending;
+using FlowTrim.Api.Subscriptions;
 using FlowTrim.Application;
-using FlowTrim.Application.Analytics;
-using FlowTrim.Application.Reports;
 using FlowTrim.Application.Abstractions;
-using FlowTrim.Application.Health;
-using FlowTrim.Application.Simulations;
-using FlowTrim.Application.Subscriptions;
-using FlowTrim.Application.Summaries;
-using FlowTrim.Application.Usage;
 using FlowTrim.Infrastructure;
 using FlowTrim.Infrastructure.Insights;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -158,216 +154,10 @@ app.UseAuthorization();
 // Después de la autorización: el límite por propietario necesita el usuario autenticado.
 app.UseRateLimiter();
 
-// Comprueba disponibilidad de API y base de datos. Devuelve 200 si todo está bien; 503 si la BD no responde.
-// Nunca expone detalles internos del fallo.
-app.MapGet("/api/health", async (IDatabaseHealthChecker databaseHealthChecker, CancellationToken cancellationToken) =>
-{
-    bool databaseHealthy = await databaseHealthChecker.CanConnectAsync(cancellationToken);
-
-    var response = new HealthResponse(
-        Status: databaseHealthy ? HealthResponse.Healthy : HealthResponse.Unhealthy,
-        Api: HealthResponse.Healthy,
-        Database: databaseHealthy ? HealthResponse.Healthy : HealthResponse.Unhealthy);
-
-    return databaseHealthy
-        ? Results.Ok(response)
-        : Results.Json(response, statusCode: StatusCodes.Status503ServiceUnavailable);
-})
-.WithName("GetHealth");
-
-// Crea una suscripción. Devuelve 201 con el recurso creado, o 400 con errores por campo.
-app.MapPost("/api/subscriptions", async (
-    CreateSubscriptionRequest request,
-    ICreateSubscriptionHandler handler,
-    CancellationToken cancellationToken) =>
-{
-    CreateSubscriptionResult result = await handler.HandleAsync(request, cancellationToken);
-
-    return result.IsSuccess
-        ? Results.Created($"/api/subscriptions/{result.Value!.Id}", result.Value)
-        : Results.ValidationProblem(result.Errors);
-})
-.RequireAuthorization()
-.WithName("CreateSubscription");
-
-// Lista paginada de suscripciones (orden: próxima fecha de cobro, luego nombre).
-app.MapGet("/api/subscriptions", async (
-    IListSubscriptionsHandler handler,
-    CancellationToken cancellationToken,
-    int? page,
-    int? pageSize) =>
-{
-    var result = await handler.HandleAsync(page ?? 1, pageSize ?? ListSubscriptionsHandler.DefaultPageSize, cancellationToken);
-    return Results.Ok(result);
-})
-.RequireAuthorization()
-.WithName("ListSubscriptions");
-
-// Próximos cobros (activas) ordenados por fecha, con cuenta regresiva y ventana de alerta.
-app.MapGet("/api/subscriptions/upcoming", async (
-    IGetUpcomingChargesHandler handler,
-    CancellationToken cancellationToken) =>
-{
-    var result = await handler.HandleAsync(cancellationToken);
-    return Results.Ok(result);
-})
-.RequireAuthorization()
-.WithName("GetUpcomingCharges");
-
-// Detalle de una suscripción.
-app.MapGet("/api/subscriptions/{id:guid}", async (
-    Guid id,
-    IGetSubscriptionHandler handler,
-    CancellationToken cancellationToken) =>
-{
-    var subscription = await handler.HandleAsync(id, cancellationToken);
-    return subscription is null
-        ? Results.Problem(statusCode: StatusCodes.Status404NotFound)
-        : Results.Ok(subscription);
-})
-.RequireAuthorization()
-.WithName("GetSubscription");
-
-// Actualización completa de una suscripción.
-app.MapPut("/api/subscriptions/{id:guid}", async (
-    Guid id,
-    UpdateSubscriptionRequest request,
-    IUpdateSubscriptionHandler handler,
-    CancellationToken cancellationToken) =>
-{
-    UpdateSubscriptionResult result = await handler.HandleAsync(id, request, cancellationToken);
-
-    return result.Kind switch
-    {
-        UpdateSubscriptionResult.ResultKind.NotFound => Results.Problem(statusCode: StatusCodes.Status404NotFound),
-        UpdateSubscriptionResult.ResultKind.Invalid => Results.ValidationProblem(result.Errors),
-        _ => Results.Ok(result.Value),
-    };
-})
-.RequireAuthorization()
-.WithName("UpdateSubscription");
-
-// Eliminación de una suscripción.
-app.MapDelete("/api/subscriptions/{id:guid}", async (
-    Guid id,
-    IDeleteSubscriptionHandler handler,
-    CancellationToken cancellationToken) =>
-{
-    bool deleted = await handler.HandleAsync(id, cancellationToken);
-    return deleted
-        ? Results.NoContent()
-        : Results.Problem(statusCode: StatusCodes.Status404NotFound);
-})
-.RequireAuthorization()
-.WithName("DeleteSubscription");
-
-// Resumen financiero por moneda (equivalente mensual y proyección anual de las suscripciones activas).
-app.MapGet("/api/summary", async (
-    IGetSummaryHandler handler,
-    CancellationToken cancellationToken) =>
-{
-    var summary = await handler.HandleAsync(cancellationToken);
-    return Results.Ok(summary);
-})
-.RequireAuthorization()
-.WithName("GetSummary");
-
-// Registrar un uso declarado para una suscripción. 201 / 400 / 404 (si la suscripción no existe).
-app.MapPost("/api/subscriptions/{id:guid}/usage-records", async (
-    Guid id,
-    RegisterUsageRequest request,
-    IRegisterUsageHandler handler,
-    CancellationToken cancellationToken) =>
-{
-    RegisterUsageResult result = await handler.HandleAsync(id, request, cancellationToken);
-
-    return result.Kind switch
-    {
-        RegisterUsageResult.ResultKind.NotFound => Results.Problem(statusCode: StatusCodes.Status404NotFound),
-        RegisterUsageResult.ResultKind.Invalid => Results.ValidationProblem(result.Errors),
-        _ => Results.Created($"/api/subscriptions/{id}/usage-records/{result.Value!.Id}", result.Value),
-    };
-})
-.RequireAuthorization()
-.WithName("RegisterUsage");
-
-// Listar los usos de una suscripción, filtrables por periodo. 200 / 404.
-app.MapGet("/api/subscriptions/{id:guid}/usage-records", async (
-    Guid id,
-    IListUsageHandler handler,
-    CancellationToken cancellationToken,
-    DateOnly? from,
-    DateOnly? to) =>
-{
-    var records = await handler.HandleAsync(id, from, to, cancellationToken);
-    return records is null
-        ? Results.Problem(statusCode: StatusCodes.Status404NotFound)
-        : Results.Ok(records);
-})
-.RequireAuthorization()
-.WithName("ListUsage");
-
-// Calcula el costo declarado por uso. 200 con resultado o 404 si la suscripción no existe.
-app.MapGet("/api/subscriptions/{id:guid}/cost-per-use", async (
-    Guid id,
-    IGetCostPerUseHandler handler,
-    CancellationToken cancellationToken,
-    DateOnly? from,
-    DateOnly? to) =>
-{
-    var result = await handler.HandleAsync(id, from, to, cancellationToken);
-    return result is null
-        ? Results.Problem(statusCode: StatusCodes.Status404NotFound)
-        : Results.Ok(result);
-})
-.RequireAuthorization()
-.WithName("GetCostPerUse");
-
-// Simulación de cancelación y ahorro potencial. No persiste nada. 200 con el resultado, o 400 si los horizontes son inválidos.
-app.MapPost("/api/simulations", async (
-    SimulationRequest request,
-    ISimulateHandler handler,
-    CancellationToken cancellationToken) =>
-{
-    SimulationResult result = await handler.HandleAsync(request, cancellationToken);
-
-    return result.IsSuccess
-        ? Results.Ok(result.Value)
-        : Results.ValidationProblem(result.Errors);
-})
-.RequireAuthorization()
-.WithName("Simulate");
-
-// Analítica por moneda (HU-50): gasto por categoría, más caras y cobros esperados por mes. 200 / 400 / 401.
-app.MapGet("/api/analytics", async (
-    IGetAnalyticsHandler handler,
-    CancellationToken cancellationToken,
-    int? months) =>
-{
-    AnalyticsResult result = await handler.HandleAsync(months, cancellationToken);
-
-    return result.IsSuccess
-        ? Results.Ok(result.Value)
-        : Results.ValidationProblem(result.Errors);
-})
-.RequireAuthorization()
-.WithName("GetAnalytics");
-
-// Exporta todas las suscripciones del propietario a CSV (HU-52). 200 como adjunto / 401.
-app.MapGet("/api/reports/subscriptions.csv", async (
-    IExportSubscriptionsHandler handler,
-    CancellationToken cancellationToken) =>
-{
-    ExportFile file = await handler.HandleAsync(cancellationToken);
-    return Results.File(file.Content, file.ContentType, file.FileName);
-})
-.RequireAuthorization()
-.WithName("ExportSubscriptionsCsv");
-
-// Preguntas acotadas sobre los datos del propietario (HU-35). 200 / 400 / 401 / 429 / 502 / 504.
+app.MapHealthEndpoints();
+app.MapSubscriptionEndpoints();
+app.MapSpendingEndpoints();
 app.MapInsightsEndpoints();
-
-// Importación CSV de suscripciones (EP-07): vista previa sin persistencia (HU-43). 200 / 400 / 401 / 413.
 app.MapSubscriptionImportEndpoints();
 
 app.Run();

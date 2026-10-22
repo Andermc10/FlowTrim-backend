@@ -1,6 +1,6 @@
-namespace FlowTrim.Application.Subscriptions;
-
 using FlowTrim.Application.Abstractions;
+
+namespace FlowTrim.Application.Subscriptions;
 
 /// <summary>Caso de uso: obtener una suscripción por id. Devuelve <c>null</c> si no existe.</summary>
 public interface IGetSubscriptionHandler

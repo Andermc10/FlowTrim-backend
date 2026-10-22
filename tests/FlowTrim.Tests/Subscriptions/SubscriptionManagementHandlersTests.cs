@@ -1,3 +1,4 @@
+using FlowTrim.Application.Common;
 using FlowTrim.Application.Subscriptions;
 using FlowTrim.Domain.Common;
 using FlowTrim.Domain.Subscriptions;
@@ -85,7 +86,7 @@ public sealed class SubscriptionManagementHandlersTests
 
         var result = await handler.HandleAsync(Guid.NewGuid(), ValidUpdate(), CancellationToken.None);
 
-        Assert.Equal(UpdateSubscriptionResult.ResultKind.NotFound, result.Kind);
+        Assert.Equal(HandlerResultKind.NotFound, result.Kind);
     }
 
     [Fact]
@@ -99,7 +100,7 @@ public sealed class SubscriptionManagementHandlersTests
 
         var result = await handler.HandleAsync(subscription.Id, ValidUpdate(), CancellationToken.None);
 
-        Assert.Equal(UpdateSubscriptionResult.ResultKind.Success, result.Kind);
+        Assert.Equal(HandlerResultKind.Success, result.Kind);
         Assert.Equal("Netflix Premium", result.Value!.Name);
         Assert.Equal("Yearly", result.Value.BillingCycle);
         Assert.Equal(later, result.Value.UpdatedAt);
@@ -131,7 +132,7 @@ public sealed class SubscriptionManagementHandlersTests
 
         var result = await handler.HandleAsync(subscription.Id, ValidUpdate(status: "Paused"), CancellationToken.None);
 
-        Assert.Equal(UpdateSubscriptionResult.ResultKind.Invalid, result.Kind);
+        Assert.Equal(HandlerResultKind.Invalid, result.Kind);
         Assert.True(result.Errors.ContainsKey("status"));
     }
 

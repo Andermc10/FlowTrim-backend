@@ -11,8 +11,8 @@ using Microsoft.Extensions.Options;
 namespace FlowTrim.Infrastructure.Insights;
 
 /// <summary>
-/// Adaptador para cualquier endpoint <c>/chat/completions</c> con formato OpenAI (GitHub Models, OpenRouter,
-/// Groq, Gemini en modo compatible...). Cambiar de proveedor es cambiar configuración, no código. Traduce todo fallo
+/// Adaptador para cualquier endpoint <c>/chat/completions</c> con formato OpenAI (Groq, OpenRouter,
+/// Gemini en modo compatible...). Cambiar de proveedor es cambiar configuración, no código. Traduce todo fallo
 /// a <see cref="ChatModelException"/> y nunca registra la clave, las preguntas ni las respuestas.
 /// </summary>
 public sealed class OpenAiCompatibleChatModel(

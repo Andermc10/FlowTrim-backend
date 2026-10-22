@@ -1,5 +1,6 @@
-using FlowTrim.Application.Subscriptions;
 using FlowTrim.Application.Abstractions;
+using FlowTrim.Application.Common;
+using FlowTrim.Application.Subscriptions;
 using FlowTrim.Domain.Simulations;
 
 namespace FlowTrim.Application.Simulations;
@@ -7,7 +8,7 @@ namespace FlowTrim.Application.Simulations;
 /// <summary>Caso de uso: simular la cancelación de suscripciones y el ahorro potencial (sin persistir).</summary>
 public interface ISimulateHandler
 {
-    Task<SimulationResult> HandleAsync(SimulationRequest request, CancellationToken cancellationToken);
+    Task<HandlerResult<SimulationResponse>> HandleAsync(SimulationRequest request, CancellationToken cancellationToken);
 }
 
 public sealed class SimulateHandler : ISimulateHandler
@@ -31,13 +32,13 @@ public sealed class SimulateHandler : ISimulateHandler
         _currentUser = currentUser;
     }
 
-    public async Task<SimulationResult> HandleAsync(SimulationRequest request, CancellationToken cancellationToken)
+    public async Task<HandlerResult<SimulationResponse>> HandleAsync(SimulationRequest request, CancellationToken cancellationToken)
     {
         var horizons = request.Horizons is { Count: > 0 } ? request.Horizons : DefaultHorizons;
 
         if (horizons.Any(months => months <= 0))
         {
-            return SimulationResult.Invalid(new Dictionary<string, string[]>
+            return HandlerResult<SimulationResponse>.Invalid(new Dictionary<string, string[]>
             {
                 ["horizons"] = ["Each horizon must be greater than zero."]
             });
@@ -58,6 +59,6 @@ public sealed class SimulateHandler : ISimulateHandler
                 c.Savings.Select(s => new SavingsResponse(s.Months, s.Amount)).ToList()))
             .ToList();
 
-        return SimulationResult.Success(new SimulationResponse(horizons, currencies, Assumptions));
+        return HandlerResult<SimulationResponse>.Success(new SimulationResponse(horizons, currencies, Assumptions));
     }
 }

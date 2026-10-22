@@ -1,3 +1,4 @@
+using FlowTrim.Application.Common;
 using FlowTrim.Application.Usage;
 using FlowTrim.Domain.Common;
 using FlowTrim.Domain.Subscriptions;
@@ -86,7 +87,7 @@ public sealed class UsageTests
 
         var result = await register.HandleAsync(Guid.NewGuid(), new RegisterUsageRequest(UsageDate, 2, null), CancellationToken.None);
 
-        Assert.Equal(RegisterUsageResult.ResultKind.NotFound, result.Kind);
+        Assert.Equal(HandlerResultKind.NotFound, result.Kind);
         Assert.Empty(usage.Items);
     }
 
@@ -99,7 +100,7 @@ public sealed class UsageTests
 
         var result = await register.HandleAsync(subscription.Id, new RegisterUsageRequest(UsageDate, 2, "note"), CancellationToken.None);
 
-        Assert.Equal(RegisterUsageResult.ResultKind.Created, result.Kind);
+        Assert.Equal(HandlerResultKind.Success, result.Kind);
         Assert.Equal(subscription.Id, result.Value!.SubscriptionId);
         Assert.Single(usage.Items);
     }
@@ -113,7 +114,7 @@ public sealed class UsageTests
 
         var result = await register.HandleAsync(subscription.Id, new RegisterUsageRequest(null, 2, null), CancellationToken.None);
 
-        Assert.Equal(RegisterUsageResult.ResultKind.Invalid, result.Kind);
+        Assert.Equal(HandlerResultKind.Invalid, result.Kind);
         Assert.True(result.Errors.ContainsKey("usageDate"));
     }
 

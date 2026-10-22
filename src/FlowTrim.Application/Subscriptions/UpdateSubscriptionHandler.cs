@@ -1,12 +1,13 @@
-using FlowTrim.Domain.Subscriptions;
 using FlowTrim.Application.Abstractions;
+using FlowTrim.Application.Common;
+using FlowTrim.Domain.Subscriptions;
 
 namespace FlowTrim.Application.Subscriptions;
 
 /// <summary>Caso de uso: actualizar una suscripción existente.</summary>
 public interface IUpdateSubscriptionHandler
 {
-    Task<UpdateSubscriptionResult> HandleAsync(Guid id, UpdateSubscriptionRequest request, CancellationToken cancellationToken);
+    Task<HandlerResult<SubscriptionResponse>> HandleAsync(Guid id, UpdateSubscriptionRequest request, CancellationToken cancellationToken);
 }
 
 public sealed class UpdateSubscriptionHandler : IUpdateSubscriptionHandler
@@ -22,7 +23,7 @@ public sealed class UpdateSubscriptionHandler : IUpdateSubscriptionHandler
         _currentUser = currentUser;
     }
 
-    public async Task<UpdateSubscriptionResult> HandleAsync(
+    public async Task<HandlerResult<SubscriptionResponse>> HandleAsync(
         Guid id,
         UpdateSubscriptionRequest request,
         CancellationToken cancellationToken)
@@ -30,44 +31,19 @@ public sealed class UpdateSubscriptionHandler : IUpdateSubscriptionHandler
         var subscription = await _repository.GetByIdAsync(_currentUser.GetOwnerId(), id, cancellationToken);
         if (subscription is null)
         {
-            return UpdateSubscriptionResult.NotFound();
+            return HandlerResult<SubscriptionResponse>.NotFound();
         }
 
         var errors = new Dictionary<string, string[]>();
-
-        if (request.Amount is null)
-        {
-            errors["amount"] = ["Amount is required."];
-        }
-
-        BillingCycle billingCycle = default;
-        if (string.IsNullOrWhiteSpace(request.BillingCycle))
-        {
-            errors["billingCycle"] = ["Billing cycle is required."];
-        }
-        else if (!Enum.TryParse(request.BillingCycle, ignoreCase: false, out billingCycle) || !Enum.IsDefined(billingCycle))
-        {
-            errors["billingCycle"] = ["Billing cycle must be 'Monthly' or 'Yearly'."];
-        }
-
-        SubscriptionStatus status = default;
-        if (string.IsNullOrWhiteSpace(request.Status))
-        {
-            errors["status"] = ["Status is required."];
-        }
-        else if (!Enum.TryParse(request.Status, ignoreCase: false, out status) || !Enum.IsDefined(status))
-        {
-            errors["status"] = ["Status must be 'Active' or 'Inactive'."];
-        }
-
-        if (request.NextBillingDate is null)
-        {
-            errors["nextBillingDate"] = ["Next billing date is required."];
-        }
+        SubscriptionRequestValidator.RequireAmount(request.Amount, errors);
+        var billingCycle = SubscriptionRequestValidator.ParseEnum<BillingCycle>(
+            request.BillingCycle, "billingCycle", "Billing cycle", errors);
+        var status = SubscriptionRequestValidator.ParseEnum<SubscriptionStatus>(request.Status, "status", "Status", errors);
+        SubscriptionRequestValidator.RequireNextBillingDate(request.NextBillingDate, errors);
 
         if (errors.Count > 0)
         {
-            return UpdateSubscriptionResult.Invalid(errors);
+            return HandlerResult<SubscriptionResponse>.Invalid(errors);
         }
 
         // Las invariantes de dominio que fallen lanzan DomainValidationException → 400 (manejador global).
@@ -82,6 +58,6 @@ public sealed class UpdateSubscriptionHandler : IUpdateSubscriptionHandler
             _timeProvider);
 
         await _repository.UpdateAsync(subscription, cancellationToken);
-        return UpdateSubscriptionResult.Success(SubscriptionMapper.ToResponse(subscription));
+        return HandlerResult<SubscriptionResponse>.Success(SubscriptionMapper.ToResponse(subscription));
     }
 }

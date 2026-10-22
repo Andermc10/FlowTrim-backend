@@ -1,12 +1,13 @@
-using FlowTrim.Domain.Subscriptions;
 using FlowTrim.Application.Abstractions;
+using FlowTrim.Application.Common;
+using FlowTrim.Domain.Subscriptions;
 
 namespace FlowTrim.Application.Subscriptions;
 
 /// <summary>Caso de uso: crear una suscripción.</summary>
 public interface ICreateSubscriptionHandler
 {
-    Task<CreateSubscriptionResult> HandleAsync(CreateSubscriptionRequest request, CancellationToken cancellationToken);
+    Task<HandlerResult<SubscriptionResponse>> HandleAsync(CreateSubscriptionRequest request, CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -30,36 +31,19 @@ public sealed class CreateSubscriptionHandler : ICreateSubscriptionHandler
         _currentUser = currentUser;
     }
 
-    public async Task<CreateSubscriptionResult> HandleAsync(
+    public async Task<HandlerResult<SubscriptionResponse>> HandleAsync(
         CreateSubscriptionRequest request,
         CancellationToken cancellationToken)
     {
         var errors = new Dictionary<string, string[]>();
-
-        // Validación de borde: presencia y parseo (lo que el dominio no expresa bien con tipos).
-        if (request.Amount is null)
-        {
-            errors["amount"] = ["Amount is required."];
-        }
-
-        BillingCycle billingCycle = default;
-        if (string.IsNullOrWhiteSpace(request.BillingCycle))
-        {
-            errors["billingCycle"] = ["Billing cycle is required."];
-        }
-        else if (!Enum.TryParse(request.BillingCycle, ignoreCase: false, out billingCycle) || !Enum.IsDefined(billingCycle))
-        {
-            errors["billingCycle"] = ["Billing cycle must be 'Monthly' or 'Yearly'."];
-        }
-
-        if (request.NextBillingDate is null)
-        {
-            errors["nextBillingDate"] = ["Next billing date is required."];
-        }
+        SubscriptionRequestValidator.RequireAmount(request.Amount, errors);
+        var billingCycle = SubscriptionRequestValidator.ParseEnum<BillingCycle>(
+            request.BillingCycle, "billingCycle", "Billing cycle", errors);
+        SubscriptionRequestValidator.RequireNextBillingDate(request.NextBillingDate, errors);
 
         if (errors.Count > 0)
         {
-            return CreateSubscriptionResult.Invalid(errors);
+            return HandlerResult<SubscriptionResponse>.Invalid(errors);
         }
 
         // El dominio es la autoridad de las reglas de valor (nombre, importe, moneda, categoría).
@@ -75,6 +59,6 @@ public sealed class CreateSubscriptionHandler : ICreateSubscriptionHandler
             _timeProvider);
 
         await _repository.AddAsync(subscription, cancellationToken);
-        return CreateSubscriptionResult.Success(SubscriptionMapper.ToResponse(subscription));
+        return HandlerResult<SubscriptionResponse>.Success(SubscriptionMapper.ToResponse(subscription));
     }
 }
