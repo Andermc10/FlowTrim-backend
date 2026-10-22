@@ -22,6 +22,125 @@ namespace FlowTrim.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("FlowTrim.Domain.Accounts.Account", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasColumnType("char(3)")
+                        .HasColumnName("currency");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_archived");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("name");
+
+                    b.Property<decimal>("OpeningBalance")
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("opening_balance");
+
+                    b.Property<string>("OwnerId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("owner_id");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("type");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_accounts");
+
+                    b.HasAlternateKey("OwnerId", "Id")
+                        .HasName("ux_accounts_owner_id_id");
+
+                    b.ToTable("accounts", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_accounts_owner_id_not_empty", "owner_id <> ''");
+
+                            t.HasCheckConstraint("ck_accounts_type", "type IN ('Cash', 'Bank', 'CreditCard', 'Savings')");
+                        });
+                });
+
+            modelBuilder.Entity("FlowTrim.Domain.Categories.Category", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Color")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("color");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Icon")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("icon");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_archived");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("OwnerId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("owner_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_categories");
+
+                    b.HasAlternateKey("OwnerId", "Id")
+                        .HasName("ux_categories_owner_id_id");
+
+                    b.ToTable("categories", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_categories_kind", "kind IN ('Expense', 'Income')");
+
+                            t.HasCheckConstraint("ck_categories_owner_id_not_empty", "owner_id <> ''");
+                        });
+                });
+
             modelBuilder.Entity("FlowTrim.Domain.Subscriptions.Subscription", b =>
                 {
                     b.Property<Guid>("Id")
@@ -100,6 +219,92 @@ namespace FlowTrim.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("FlowTrim.Domain.Transactions.Transaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("account_id");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<Guid?>("CategoryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("category_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date")
+                        .HasColumnName("date");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(140)
+                        .HasColumnType("character varying(140)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("note");
+
+                    b.Property<string>("OwnerId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("owner_id");
+
+                    b.Property<Guid?>("ToAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("to_account_id");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("type");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_transactions");
+
+                    b.HasIndex("OwnerId", "AccountId")
+                        .HasDatabaseName("ix_transactions_owner_id_account_id");
+
+                    b.HasIndex("OwnerId", "CategoryId")
+                        .HasDatabaseName("ix_transactions_owner_id_category_id");
+
+                    b.HasIndex("OwnerId", "Date")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_transactions_owner_id_date");
+
+                    b.HasIndex("OwnerId", "ToAccountId")
+                        .HasDatabaseName("ix_transactions_owner_id_to_account_id");
+
+                    b.ToTable("transactions", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_transactions_amount_positive", "amount > 0");
+
+                            t.HasCheckConstraint("ck_transactions_distinct_accounts", "to_account_id <> account_id");
+
+                            t.HasCheckConstraint("ck_transactions_owner_id_not_empty", "owner_id <> ''");
+
+                            t.HasCheckConstraint("ck_transactions_shape", "(type = 'Transfer' AND to_account_id IS NOT NULL AND category_id IS NULL) OR (type <> 'Transfer' AND to_account_id IS NULL AND category_id IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_transactions_type", "type IN ('Income', 'Expense', 'Transfer')");
+                        });
+                });
+
             modelBuilder.Entity("FlowTrim.Domain.Usage.UsageRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -134,6 +339,31 @@ namespace FlowTrim.Infrastructure.Persistence.Migrations
                         {
                             t.HasCheckConstraint("ck_usage_records_usage_count_non_negative", "usage_count >= 0");
                         });
+                });
+
+            modelBuilder.Entity("FlowTrim.Domain.Transactions.Transaction", b =>
+                {
+                    b.HasOne("FlowTrim.Domain.Accounts.Account", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId", "AccountId")
+                        .HasPrincipalKey("OwnerId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_transactions_accounts_owner_id_account_id");
+
+                    b.HasOne("FlowTrim.Domain.Categories.Category", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId", "CategoryId")
+                        .HasPrincipalKey("OwnerId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_transactions_categories_owner_id_category_id");
+
+                    b.HasOne("FlowTrim.Domain.Accounts.Account", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId", "ToAccountId")
+                        .HasPrincipalKey("OwnerId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_transactions_accounts_owner_id_to_account_id");
                 });
 
             modelBuilder.Entity("FlowTrim.Domain.Usage.UsageRecord", b =>

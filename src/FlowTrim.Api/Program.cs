@@ -1,3 +1,4 @@
+using FlowTrim.Api.Accounts;
 using FlowTrim.Api.Authentication;
 using FlowTrim.Api.Cors;
 using FlowTrim.Api.Health;
@@ -160,6 +161,7 @@ app.MapSubscriptionEndpoints();
 app.MapSpendingEndpoints();
 app.MapInsightsEndpoints();
 app.MapSubscriptionImportEndpoints();
+app.MapAccountEndpoints();
 
 app.Run();
 

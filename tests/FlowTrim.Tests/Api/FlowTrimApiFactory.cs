@@ -1,4 +1,5 @@
 using FlowTrim.Application.Abstractions;
+using FlowTrim.Application.Accounts;
 using FlowTrim.Application.Subscriptions;
 using FlowTrim.Application.Usage;
 using FlowTrim.Tests.Common;
@@ -34,6 +35,8 @@ public sealed class FlowTrimApiFactory : WebApplicationFactory<Program>
 
     public InMemoryUsageRecordRepository UsageRecords { get; } = new();
 
+    public InMemoryAccountRepository Accounts { get; } = new();
+
     /// <summary>"Ahora" de la API en las pruebas: 2026-10-20 10:00 en Bogotá (hoy = 2026-10-20 en el calendario del producto).</summary>
     public static readonly DateTimeOffset DefaultNow = new(2026, 10, 20, 15, 0, 0, TimeSpan.Zero);
 
@@ -66,6 +69,7 @@ public sealed class FlowTrimApiFactory : WebApplicationFactory<Program>
 
             services.AddSingleton<ISubscriptionRepository>(Subscriptions);
             services.AddSingleton<IUsageRecordRepository>(UsageRecords);
+            services.AddSingleton<IAccountRepository>(Accounts);
             services.AddSingleton<IDatabaseHealthChecker, HealthyDatabaseChecker>();
         });
     }

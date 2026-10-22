@@ -7,7 +7,7 @@
 [![Backend CI](https://github.com/Andermc10/FlowTrim-backend/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Andermc10/FlowTrim-backend/actions/workflows/ci.yml)
 ![.NET 10](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet&logoColor=white)
 ![PostgreSQL 17](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-457%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-533%20passing-2ea44f)
 ![Auth](https://img.shields.io/badge/auth-OIDC%20%2F%20JWT-EB5424?logo=auth0&logoColor=white)
 
 [Frontend](https://github.com/Andermc10/FlowTrim-frontend) · [Specs & backlog](https://github.com/Andermc10/FlowTrim-tracker) · [Operations runbook](https://github.com/Andermc10/FlowTrim-tracker/blob/main/docs/OPERATIONS.md)
@@ -81,8 +81,9 @@ Every route except `/api/health` needs a bearer token (`401` without it, `403` i
 | Spending | `GET /api/summary` · `POST /api/simulations` · `GET /api/analytics?months=12` · `GET /api/reports/subscriptions.csv` |
 | Import | `POST /api/subscription-imports/preview` · `POST /api/subscription-imports/confirm` (multipart `file`) |
 | Insights | `POST /api/insights/questions` (5 per minute per user, 45 s budget) |
+| Accounts | `GET · POST /api/accounts` (`?includeArchived=true`) · `GET · PUT · DELETE /api/accounts/{id}` — balance computed from transactions |
 
-Errors are RFC 7807 `ProblemDetails`: `400` with field errors, `404`, and a generic `500` that never leaks stack traces or connection strings. Every response carries `X-Correlation-ID`; error bodies repeat it as `correlationId`, and the import and Insights errors add a stable `code`.
+Errors are RFC 7807 `ProblemDetails`: `400` with field errors, `404`, `409` with a `code` for business conflicts (deleting an account that has transactions, changing its currency), and a generic `500` that never leaks stack traces or connection strings. Every response carries `X-Correlation-ID`; error bodies repeat it as `correlationId`, and the import and Insights errors add a stable `code`.
 
 <details>
 <summary><b>Import rules</b></summary>
@@ -116,7 +117,7 @@ Outside Development the API enables HTTPS redirection and HSTS, writes JSON logs
 ## Tests
 
 ```bash
-dotnet test FlowTrim.slnx                                    # 457 tests (needs Docker for the PostgreSQL ones)
+dotnet test FlowTrim.slnx                                    # 533 tests (needs Docker for the PostgreSQL ones)
 dotnet test FlowTrim.slnx --filter "Category!=Integration"   # fast tests only, no Docker
 ```
 
