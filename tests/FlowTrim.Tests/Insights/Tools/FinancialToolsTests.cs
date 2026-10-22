@@ -207,6 +207,20 @@ public sealed class FinancialToolsTests
     }
 
     [Fact]
+    public async Task SimulationTool_OnlySendsCurrenciesAffectedBySelection()
+    {
+        Seed(OwnerA, "Netflix", 38900m, "COP");
+        Seed(OwnerA, "Cloud", 10m, "USD");
+
+        var json = await RunAsync(OwnerA, "simulate_cancellation", """{"subscriptionNames":["Netflix"]}""");
+
+        // HU-37: con USD en los datos el modelo escribía "0 USD" aunque esa moneda no tenía nada seleccionado.
+        var currency = Assert.Single(json.GetProperty("data").GetProperty("currencies").EnumerateArray());
+        Assert.Equal("COP", currency.GetProperty("currency").GetString());
+        Assert.DoesNotContain("USD", json.GetRawText());
+    }
+
+    [Fact]
     public async Task SimulationTool_CustomHorizons_AreUsed()
     {
         Seed(OwnerA, "Netflix", 38900m, "COP");
@@ -231,9 +245,8 @@ public sealed class FinancialToolsTests
         var data = json.GetProperty("data");
         Assert.Empty(data.GetProperty("selectedNames").EnumerateArray());
         Assert.Equal(["Gym", "Old gym"], data.GetProperty("unmatchedNames").EnumerateArray().Select(n => n.GetString()));
-        var cop = Assert.Single(data.GetProperty("currencies").EnumerateArray());
-        Assert.Equal("COP", cop.GetProperty("currency").GetString());
-        Assert.Equal(0m, cop.GetProperty("selectedMonthly").GetDecimal());
+        // Sin coincidencias ninguna moneda se ve afectada: no se envían ceros que el modelo pueda narrar.
+        Assert.Empty(data.GetProperty("currencies").EnumerateArray());
         Assert.DoesNotContain("90000", json.GetRawText());
         Assert.DoesNotContain("USD", json.GetRawText());
     }
