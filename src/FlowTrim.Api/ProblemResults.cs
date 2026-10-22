@@ -15,12 +15,16 @@ public static class ProblemResults
     /// <summary>404 sin detalles: un recurso de otro propietario responde igual que uno inexistente.</summary>
     public static IResult NotFound() => Results.Problem(statusCode: StatusCodes.Status404NotFound);
 
-    /// <summary>Traduce el resultado de un caso de uso: 404, 400 con errores por campo o la respuesta de éxito.</summary>
+    /// <summary>
+    /// Traduce el resultado de un caso de uso: 404, 400 con errores por campo, 409 con <c>code</c> o la respuesta de
+    /// éxito.
+    /// </summary>
     public static IResult ToHttpResult<T>(this HandlerResult<T> result, Func<T, IResult> onSuccess)
         where T : class => result.Kind switch
         {
             HandlerResultKind.NotFound => NotFound(),
             HandlerResultKind.Invalid => Results.ValidationProblem(result.Errors),
+            HandlerResultKind.Conflict => WithCode(StatusCodes.Status409Conflict, result.ConflictCode!, result.ConflictMessage!),
             _ => onSuccess(result.Value!),
         };
 }
