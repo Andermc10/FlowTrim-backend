@@ -19,6 +19,7 @@ public static class SubscriptionEndpoints
         group.MapGet("/{id:guid}", GetAsync).WithName("GetSubscription");
         group.MapPut("/{id:guid}", UpdateAsync).WithName("UpdateSubscription");
         group.MapDelete("/{id:guid}", DeleteAsync).WithName("DeleteSubscription");
+        group.MapPost("/{id:guid}/mark-paid", MarkPaidAsync).WithName("MarkSubscriptionPaid");
         group.MapPost("/{id:guid}/usage-records", RegisterUsageAsync).WithName("RegisterUsage");
         group.MapGet("/{id:guid}/usage-records", ListUsageAsync).WithName("ListUsage");
         group.MapGet("/{id:guid}/cost-per-use", GetCostPerUseAsync).WithName("GetCostPerUse");
@@ -53,6 +54,10 @@ public static class SubscriptionEndpoints
         await handler.HandleAsync(id, cancellationToken)
             ? Results.NoContent()
             : ProblemResults.NotFound();
+
+    // Avanza la próxima fecha un ciclo; no registra ningún pago (HU-57). 200 / 400 si está inactiva / 404.
+    private static async Task<IResult> MarkPaidAsync(Guid id, IMarkSubscriptionPaidHandler handler, CancellationToken cancellationToken) =>
+        (await handler.HandleAsync(id, cancellationToken)).ToHttpResult(Results.Ok);
 
     // Uso declarado (no verificado). 201 / 400 / 404 si la suscripción no existe.
     private static async Task<IResult> RegisterUsageAsync(

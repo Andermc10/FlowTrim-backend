@@ -4,7 +4,7 @@ using System.Text.Json;
 
 namespace FlowTrim.Tests.Api;
 
-/// <summary>HU-56 por HTTP: con el reloj fijo de la factoría, "hoy" es 2026-10-20 en Bogotá.</summary>
+/// <summary>HU-56 y HU-57 por HTTP: con el reloj fijo de la factoría, "hoy" es 2026-10-20 en Bogotá.</summary>
 public sealed class DateRulesApiTests : IClassFixture<FlowTrimApiFactory>
 {
     private readonly FlowTrimApiFactory _factory;
@@ -37,6 +37,31 @@ public sealed class DateRulesApiTests : IClassFixture<FlowTrimApiFactory>
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var errors = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("errors");
         Assert.Equal("Usage date cannot be in the future.", errors.GetProperty("usageDate")[0].GetString());
+    }
+
+    [Fact]
+    public async Task MarkPaid_OwnSubscription_AdvancesOneCycle_ForeignIs404_InactiveIs400()
+    {
+        var owner = _factory.CreateClientFor($"auth0|dates-{Guid.NewGuid():N}");
+        var stranger = _factory.CreateClientFor($"auth0|dates-{Guid.NewGuid():N}");
+        var id = (await (await owner.PostAsJsonAsync("/api/subscriptions", Payload("2026-10-20")))
+            .Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+
+        var foreign = await stranger.PostAsync($"/api/subscriptions/{id}/mark-paid", null);
+        var paid = await owner.PostAsync($"/api/subscriptions/{id}/mark-paid", null);
+
+        Assert.Equal(HttpStatusCode.NotFound, foreign.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, paid.StatusCode);
+        Assert.Equal("2026-11-20", (await paid.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("nextBillingDate").GetString());
+
+        await owner.PutAsJsonAsync($"/api/subscriptions/{id}", new
+        {
+            name = "Netflix", amount = 38900m, currency = "COP", billingCycle = "Monthly", nextBillingDate = "2026-11-20", status = "Inactive",
+        });
+        var inactive = await owner.PostAsync($"/api/subscriptions/{id}/mark-paid", null);
+
+        Assert.Equal(HttpStatusCode.BadRequest, inactive.StatusCode);
+        Assert.True((await inactive.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("errors").TryGetProperty("status", out _));
     }
 
     private static object Payload(string nextBillingDate) => new
