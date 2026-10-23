@@ -11,6 +11,9 @@ public sealed class Category
     /// <summary>Longitud máxima del nombre.</summary>
     public const int NameMaxLength = 40;
 
+    /// <summary>Mensaje del nombre repetido en la misma clase (sin distinguir mayúsculas, archivadas incluidas).</summary>
+    public const string DuplicateNameMessage = "A category of this kind with this name already exists.";
+
     /// <summary>Colores admitidos; cada uno corresponde a un token del tema con contraste suficiente en ambos temas.</summary>
     public static readonly IReadOnlyList<string> Colors =
         ["slate", "red", "orange", "amber", "green", "teal", "blue", "indigo", "violet", "pink"];
