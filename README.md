@@ -7,7 +7,7 @@
 [![Backend CI](https://github.com/Andermc10/FlowTrim-backend/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Andermc10/FlowTrim-backend/actions/workflows/ci.yml)
 ![.NET 10](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet&logoColor=white)
 ![PostgreSQL 17](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-586%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-605%20passing-2ea44f)
 ![Auth](https://img.shields.io/badge/auth-OIDC%20%2F%20JWT-EB5424?logo=auth0&logoColor=white)
 
 [Frontend](https://github.com/Andermc10/FlowTrim-frontend) · [Specs & backlog](https://github.com/Andermc10/FlowTrim-tracker) · [Operations runbook](https://github.com/Andermc10/FlowTrim-tracker/blob/main/docs/OPERATIONS.md)
@@ -84,6 +84,7 @@ Every route except `/api/health` needs a bearer token (`401` without it, `403` i
 | Accounts | `GET · POST /api/accounts` (`?includeArchived=true`) · `GET · PUT · DELETE /api/accounts/{id}` — balance computed from transactions |
 | Categories | `GET · POST /api/categories` (`?kind=Expense|Income`, `?includeArchived=true`; the first list creates a default set in the `Accept-Language` language) · `PUT · DELETE /api/categories/{id}` |
 | Transactions | `GET · POST /api/transactions` (`?from=&to=&accountId=&categoryId=&type=&search=&page=&pageSize=`, totals per currency for the whole filter) · `GET · PUT · DELETE /api/transactions/{id}` — income, expense or same-currency transfer, dated today or earlier |
+| Today | `GET /api/dashboard/today` — per currency: available money, month income/expenses/net, today's expenses, charges until month end, days left and **safe to spend today** = `max(0, (available − committed) / daysLeft)`; plus accounts, last 5 transactions and the month's expected charges |
 
 Errors are RFC 7807 `ProblemDetails`: `400` with field errors, `404`, `409` with a `code` for business conflicts (deleting an account or category that has transactions, changing an account's currency or a category's kind), and a generic `500` that never leaks stack traces or connection strings. Every response carries `X-Correlation-ID`; error bodies repeat it as `correlationId`, and the import and Insights errors add a stable `code`.
 
@@ -119,7 +120,7 @@ Outside Development the API enables HTTPS redirection and HSTS, writes JSON logs
 ## Tests
 
 ```bash
-dotnet test FlowTrim.slnx                                    # 586 tests (needs Docker for the PostgreSQL ones)
+dotnet test FlowTrim.slnx                                    # 605 tests (needs Docker for the PostgreSQL ones)
 dotnet test FlowTrim.slnx --filter "Category!=Integration"   # fast tests only, no Docker
 ```
 
