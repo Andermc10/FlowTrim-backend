@@ -36,6 +36,11 @@ public static class DependencyInjection
         services.AddScoped<Categories.ICreateCategoryHandler, Categories.CreateCategoryHandler>();
         services.AddScoped<Categories.IUpdateCategoryHandler, Categories.UpdateCategoryHandler>();
         services.AddScoped<Categories.IDeleteCategoryHandler, Categories.DeleteCategoryHandler>();
+        services.AddScoped<Transactions.IListTransactionsHandler, Transactions.ListTransactionsHandler>();
+        services.AddScoped<Transactions.IGetTransactionHandler, Transactions.GetTransactionHandler>();
+        services.AddScoped<Transactions.ICreateTransactionHandler, Transactions.CreateTransactionHandler>();
+        services.AddScoped<Transactions.IUpdateTransactionHandler, Transactions.UpdateTransactionHandler>();
+        services.AddScoped<Transactions.IDeleteTransactionHandler, Transactions.DeleteTransactionHandler>();
 
         // Herramientas financieras de solo lectura para Insights (HU-34): esta lista es la allow-list completa.
         services.AddScoped<IFinancialTool, SpendingSummaryTool>();
