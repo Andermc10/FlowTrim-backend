@@ -1,4 +1,7 @@
+using FlowTrim.Domain.Accounts;
+using FlowTrim.Domain.Categories;
 using FlowTrim.Domain.Subscriptions;
+using FlowTrim.Domain.Transactions;
 using FlowTrim.Domain.Usage;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,6 +16,9 @@ public sealed class FlowTrimDbContext : DbContext
 
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
     public DbSet<UsageRecord> UsageRecords => Set<UsageRecord>();
+    public DbSet<Account> Accounts => Set<Account>();
+    public DbSet<Category> Categories => Set<Category>();
+    public DbSet<Transaction> Transactions => Set<Transaction>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
