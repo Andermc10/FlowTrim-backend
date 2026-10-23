@@ -56,6 +56,7 @@ public sealed class AuthorizationApiTests : IClassFixture<FlowTrimApiFactory>
             { "GET", $"/api/transactions/{id}" },
             { "PUT", $"/api/transactions/{id}" },
             { "DELETE", $"/api/transactions/{id}" },
+            { "GET", "/api/dashboard/today" },
         };
     }
 
