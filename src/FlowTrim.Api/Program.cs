@@ -8,6 +8,7 @@ using FlowTrim.Api.Insights;
 using FlowTrim.Api.Observability;
 using FlowTrim.Api.Spending;
 using FlowTrim.Api.Subscriptions;
+using FlowTrim.Api.Transactions;
 using FlowTrim.Application;
 using FlowTrim.Application.Abstractions;
 using FlowTrim.Infrastructure;
@@ -164,6 +165,7 @@ app.MapInsightsEndpoints();
 app.MapSubscriptionImportEndpoints();
 app.MapAccountEndpoints();
 app.MapCategoryEndpoints();
+app.MapTransactionEndpoints();
 
 app.Run();
 
