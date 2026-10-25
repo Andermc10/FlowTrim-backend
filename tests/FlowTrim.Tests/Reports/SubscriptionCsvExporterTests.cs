@@ -37,7 +37,7 @@ public sealed class SubscriptionCsvExporterTests
 
         var lines = Lines(csv);
         Assert.Equal(SubscriptionCsvExporter.Header, lines[0]);
-        Assert.Equal("Cloud,Storage,120000.00,COP,Yearly,10000.00,2026-11-01,Inactive", lines[1]);
+        Assert.Equal("Cloud,Storage,120000.00,COP,Yearly,10000.00,2026-11-01,Inactive,Subscription,", lines[1]);
         Assert.Equal(string.Empty, lines[2]);
         Assert.EndsWith("\r\n", csv);
     }

@@ -27,7 +27,11 @@ public sealed record CurrencyTodayResponse(
     decimal SafeToSpendToday,
     decimal Shortfall);
 
-/// <summary>Cobro esperado (no un pago) de una suscripción activa hasta el último día del mes; vencido si ya pasó.</summary>
+/// <summary>
+/// Cobro esperado (no un pago) de un pago activo hasta el último día del mes; vencido si ya pasó. Un pago con varios
+/// cobros en el mes aparece una vez por cobro: <c>NextBillingDate</c> es la fecha de ese cobro (nombre conservado por
+/// compatibilidad de la API).
+/// </summary>
 public sealed record MonthChargeResponse(
     Guid SubscriptionId,
     string Name,

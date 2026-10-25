@@ -76,7 +76,7 @@ Every route except `/api/health` needs a bearer token (`401` without it, `403` i
 | Area | Routes |
 |---|---|
 | Health | `GET /api/health` → `200` or `503`, no internals |
-| Subscriptions | `POST · GET /api/subscriptions` · `GET · PUT · DELETE /api/subscriptions/{id}` · `GET /api/subscriptions/upcoming` · `POST /api/subscriptions/{id}/mark-paid` |
+| Recurring payments | `POST · GET /api/subscriptions` (`?kind=Subscription` or `?kind=Bill`) · `GET · PUT · DELETE /api/subscriptions/{id}` · `GET /api/subscriptions/upcoming` · `POST /api/subscriptions/{id}/mark-paid` — kinds `Subscription`/`Bill`, cycles `Weekly`/`Biweekly`/`Monthly`/`Quarterly`/`Yearly`, optional `https://` payment link and default account/expense category. The UI calls them recurring payments; the routes and the `subscriptions` table keep their MVP names |
 | Usage | `POST · GET /api/subscriptions/{id}/usage-records` · `GET /api/subscriptions/{id}/cost-per-use?from=&to=` |
 | Spending | `GET /api/summary` · `POST /api/simulations` · `GET /api/analytics?months=12` · `GET /api/reports/subscriptions.csv` |
 | Import | `POST /api/subscription-imports/preview` · `POST /api/subscription-imports/confirm` (multipart `file`) |
@@ -91,7 +91,7 @@ Errors are RFC 7807 `ProblemDetails`: `400` with field errors, `404`, `409` with
 <details>
 <summary><b>Import rules</b></summary>
 
-Same format as the export, so an exported file imports again: `.csv`, UTF-8 (BOM allowed), at most 256 KB and 500 rows; required `name, amount, currency, billing_cycle, next_billing_date` (today or later), optional `category, status`. Excel's semicolon files (decimal comma, `dd/MM/yyyy`) and a `sep=` first line are also accepted. A row that repeats one of your subscriptions (same name ignoring case, same currency) or an earlier row is a `duplicate` and is never created. Confirmation re-sends the same file, re-checks everything inside one transaction serialized per user (`pg_advisory_xact_lock`) and is idempotent. Full reference: [SUBSCRIPTION-CSV-FORMAT.md](https://github.com/Andermc10/FlowTrim-tracker/blob/main/docs/SUBSCRIPTION-CSV-FORMAT.md).
+Same format as the export, so an exported file imports again: `.csv`, UTF-8 (BOM allowed), at most 256 KB and 500 rows; required `name, amount, currency, billing_cycle, next_billing_date` (today or later), optional `category, status, kind, payment_url`. Excel's semicolon files (decimal comma, `dd/MM/yyyy`) and a `sep=` first line are also accepted. A row that repeats one of your subscriptions (same name ignoring case, same currency) or an earlier row is a `duplicate` and is never created. Confirmation re-sends the same file, re-checks everything inside one transaction serialized per user (`pg_advisory_xact_lock`) and is idempotent. Full reference: [SUBSCRIPTION-CSV-FORMAT.md](https://github.com/Andermc10/FlowTrim-tracker/blob/main/docs/SUBSCRIPTION-CSV-FORMAT.md).
 
 </details>
 

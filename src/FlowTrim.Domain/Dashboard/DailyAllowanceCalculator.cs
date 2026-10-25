@@ -29,7 +29,8 @@ public sealed record CurrencyAllowance(
 /// "Puedes gastar hoy" por moneda (EP-12 §5, D7). Función pura y determinista, sin IA ni E/S:
 /// <list type="bullet">
 /// <item>disponible = Σ saldos de cuentas no archivadas de efectivo, banco y ahorros (las tarjetas son dinero prestado);</item>
-/// <item>comprometido = Σ importes de suscripciones activas con próximo cobro ≤ fin de mes (incluye vencidas y hoy);</item>
+/// <item>comprometido = Σ importes de los cobros esperados de los pagos activos hasta fin de mes, vencidos y hoy incluidos,
+/// proyectados con <see cref="RecurrenceSchedule"/> (un pago semanal cuenta 4 o 5 veces, EP-14 D4);</item>
 /// <item>días restantes = último día del mes − hoy + 1 (hoy incluido, siempre ≥ 1);</item>
 /// <item>puedes gastar hoy = max(0, (disponible − comprometido) / días restantes), a 2 decimales AwayFromZero;</item>
 /// <item>faltante = max(0, comprometido − disponible).</item>
@@ -52,7 +53,7 @@ public static class DailyAllowanceCalculator
         var committed = subscriptions
             .Where(s => s.Status == SubscriptionStatus.Active && s.NextBillingDate <= monthEnd)
             .GroupBy(s => s.Currency)
-            .ToDictionary(g => g.Key, g => g.Sum(s => s.Amount));
+            .ToDictionary(g => g.Key, g => g.Sum(s => s.Amount * CountUntil(s, monthEnd)));
 
         // Una moneda aparece si tiene cuentas activas (aunque no tenga movimientos, AC-3), movimientos este mes o
         // cobros comprometidos (p. ej. suscripciones en USD sin cuentas en USD: disponible 0 y faltante visible).
@@ -85,6 +86,15 @@ public static class DailyAllowanceCalculator
                 Math.Max(0m, charges - available));
         }).ToList();
     }
+
+    /// <summary>
+    /// Cobros esperados de un pago desde su próxima fecha (los vencidos cuentan una vez cada uno) hasta
+    /// <paramref name="until"/> incluido.
+    /// </summary>
+    public static IReadOnlyList<DateOnly> ChargesUntil(Subscription subscription, DateOnly until) =>
+        subscription.GetOccurrences(subscription.NextBillingDate, until);
+
+    private static int CountUntil(Subscription subscription, DateOnly until) => ChargesUntil(subscription, until).Count;
 
     /// <summary>Días que quedan del mes contando hoy (el último día del mes da 1).</summary>
     public static int DaysLeft(DateOnly today) => LastDayOfMonth(today).DayNumber - today.DayNumber + 1;

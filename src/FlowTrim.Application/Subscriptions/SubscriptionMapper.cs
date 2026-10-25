@@ -14,6 +14,11 @@ internal static class SubscriptionMapper
         subscription.BillingCycle.ToString(),
         subscription.NextBillingDate,
         subscription.Status.ToString(),
+        subscription.Kind.ToString(),
+        subscription.PaymentUrl,
+        subscription.DefaultAccountId,
+        subscription.CategoryId,
+        subscription.GetMonthlyEquivalent(),
         subscription.CreatedAt,
         subscription.UpdatedAt);
 }

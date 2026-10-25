@@ -74,9 +74,9 @@ public static class AnalyticsCalculator
     }
 
     /// <summary>
-    /// Cobros esperados por mes desde el mes de referencia. Mensual: cada mes desde el mes de su próximo
-    /// cobro (o desde el mes de referencia si está vencido). Anual: el mes de su próximo cobro y cada 12 meses;
-    /// si ese mes ya pasó, su siguiente aniversario. Se usa el importe real cobrado, no el equivalente.
+    /// Cobros esperados por mes desde el mes de referencia, proyectados con <see cref="RecurrenceSchedule"/> desde la
+    /// próxima fecha de cada pago (EP-14 D4): un pago semanal suma 4 o 5 cobros en un mes y uno anual solo el mes de su
+    /// aniversario. Los cobros vencidos de meses anteriores no se muestran. Se usa el importe real, no el equivalente.
     /// </summary>
     private static IReadOnlyList<MonthlyCharge> ExpectedCharges(
         IReadOnlyList<Subscription> subscriptions, DateOnly referenceDate, int months)
@@ -84,17 +84,16 @@ public static class AnalyticsCalculator
         int referenceIndex = MonthIndex(referenceDate);
         var amounts = new decimal[months];
         var counts = new int[months];
+        var firstDay = new DateOnly(referenceDate.Year, referenceDate.Month, 1);
+        var lastDay = firstDay.AddMonths(months).AddDays(-1);
 
         foreach (var subscription in subscriptions)
         {
-            int billingIndex = MonthIndex(subscription.NextBillingDate);
-            for (int offset = 0; offset < months; offset++)
+            foreach (var date in subscription.GetOccurrences(firstDay, lastDay))
             {
-                if (IsChargedIn(subscription.BillingCycle, billingIndex, referenceIndex + offset))
-                {
-                    amounts[offset] += subscription.Amount;
-                    counts[offset]++;
-                }
+                int offset = MonthIndex(date) - referenceIndex;
+                amounts[offset] += subscription.Amount;
+                counts[offset]++;
             }
         }
 
@@ -106,15 +105,6 @@ public static class AnalyticsCalculator
             })
             .ToList();
     }
-
-    // Nunca hay cobro antes del mes del próximo cobro; un cobro vencido ya queda antes del mes de referencia,
-    // así que una mensual vencida se cobra en todos los meses mostrados y una anual en su siguiente aniversario.
-    private static bool IsChargedIn(BillingCycle cycle, int billingIndex, int monthIndex) => cycle switch
-    {
-        BillingCycle.Monthly => monthIndex >= billingIndex,
-        BillingCycle.Yearly => monthIndex >= billingIndex && (monthIndex - billingIndex) % 12 == 0,
-        _ => throw new InvalidOperationException($"Unsupported billing cycle: {cycle}"),
-    };
 
     // Índice absoluto de mes (año × 12 + mes − 1) para comparar y avanzar meses sin fechas.
     private static int MonthIndex(DateOnly date) => date.Year * 12 + date.Month - 1;

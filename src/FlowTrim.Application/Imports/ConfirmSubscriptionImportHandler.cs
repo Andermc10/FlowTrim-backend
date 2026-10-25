@@ -67,8 +67,9 @@ public sealed class ConfirmSubscriptionImportHandler : IConfirmSubscriptionImpor
     private Subscription ToSubscription(string ownerId, ImportRowValues values)
     {
         var billingCycle = Enum.Parse<BillingCycle>(values.BillingCycle);
+        var details = new RecurringPaymentDetails(Enum.Parse<SubscriptionKind>(values.Kind), values.PaymentUrl, null, null);
         var subscription = Subscription.Create(ownerId, values.Name, values.Category, values.Amount, values.Currency,
-            billingCycle, values.NextBillingDate, _timeProvider);
+            billingCycle, values.NextBillingDate, _timeProvider, details);
 
         // Create siempre deja la suscripción activa; una fila "Inactive" se crea inactiva desde el inicio.
         var status = Enum.Parse<SubscriptionStatus>(values.Status);

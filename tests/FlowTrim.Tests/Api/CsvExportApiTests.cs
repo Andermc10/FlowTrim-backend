@@ -58,7 +58,7 @@ public sealed class CsvExportApiTests : IClassFixture<FlowTrimApiFactory>
     {
         var csv = await ReadCsvAsync(await _factory.CreateClientFor(OwnerA).GetAsync(Url));
 
-        Assert.Equal("sep=,\r\nname,category,amount,currency,billing_cycle,monthly_equivalent,next_billing_date,status\r\n", csv);
+        Assert.Equal("sep=,\r\nname,category,amount,currency,billing_cycle,monthly_equivalent,next_billing_date,status,kind,payment_url\r\n", csv);
     }
 
     [Fact]

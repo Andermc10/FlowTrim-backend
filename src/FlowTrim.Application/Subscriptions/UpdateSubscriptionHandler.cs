@@ -1,4 +1,6 @@
 using FlowTrim.Application.Abstractions;
+using FlowTrim.Application.Accounts;
+using FlowTrim.Application.Categories;
 using FlowTrim.Application.Common;
 using FlowTrim.Domain.Subscriptions;
 
@@ -15,12 +17,21 @@ public sealed class UpdateSubscriptionHandler : IUpdateSubscriptionHandler
     private readonly ISubscriptionRepository _repository;
     private readonly TimeProvider _timeProvider;
     private readonly ICurrentUser _currentUser;
+    private readonly IAccountRepository _accounts;
+    private readonly ICategoryRepository _categories;
 
-    public UpdateSubscriptionHandler(ISubscriptionRepository repository, TimeProvider timeProvider, ICurrentUser currentUser)
+    public UpdateSubscriptionHandler(
+        ISubscriptionRepository repository,
+        TimeProvider timeProvider,
+        ICurrentUser currentUser,
+        IAccountRepository accounts,
+        ICategoryRepository categories)
     {
         _repository = repository;
         _timeProvider = timeProvider;
         _currentUser = currentUser;
+        _accounts = accounts;
+        _categories = categories;
     }
 
     public async Task<HandlerResult<SubscriptionResponse>> HandleAsync(
@@ -28,7 +39,8 @@ public sealed class UpdateSubscriptionHandler : IUpdateSubscriptionHandler
         UpdateSubscriptionRequest request,
         CancellationToken cancellationToken)
     {
-        var subscription = await _repository.GetByIdAsync(_currentUser.GetOwnerId(), id, cancellationToken);
+        var ownerId = _currentUser.GetOwnerId();
+        var subscription = await _repository.GetByIdAsync(ownerId, id, cancellationToken);
         if (subscription is null)
         {
             return HandlerResult<SubscriptionResponse>.NotFound();
@@ -42,6 +54,9 @@ public sealed class UpdateSubscriptionHandler : IUpdateSubscriptionHandler
         // Solo una fecha nueva debe ser de hoy en adelante (HU-56).
         var notBefore = request.NextBillingDate != subscription.NextBillingDate ? ProductCalendar.Today(_timeProvider) : (DateOnly?)null;
         SubscriptionRequestValidator.RequireNextBillingDate(request.NextBillingDate, notBefore, errors);
+        var details = await SubscriptionRequestValidator.ParseDetailsAsync(
+            request.Kind, request.PaymentUrl, request.DefaultAccountId, request.CategoryId, subscription.Kind,
+            subscription, ownerId, _accounts, _categories, errors, cancellationToken);
 
         if (errors.Count > 0)
         {
@@ -57,7 +72,8 @@ public sealed class UpdateSubscriptionHandler : IUpdateSubscriptionHandler
             billingCycle,
             request.NextBillingDate!.Value,
             status,
-            _timeProvider);
+            _timeProvider,
+            details);
 
         await _repository.UpdateAsync(subscription, cancellationToken);
         return HandlerResult<SubscriptionResponse>.Success(SubscriptionMapper.ToResponse(subscription));

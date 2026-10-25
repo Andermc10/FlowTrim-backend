@@ -39,7 +39,11 @@ public static partial class SubscriptionCsvImport
         SubscriptionCsvFormat.BillingCycle, SubscriptionCsvFormat.NextBillingDate,
     ];
 
-    private static readonly IReadOnlyList<string> OptionalColumns = [SubscriptionCsvFormat.Category, SubscriptionCsvFormat.Status];
+    private static readonly IReadOnlyList<string> OptionalColumns =
+        [SubscriptionCsvFormat.Category, SubscriptionCsvFormat.Status, SubscriptionCsvFormat.Kind, SubscriptionCsvFormat.PaymentUrl];
+
+    // Pista con todos los ciclos admitidos, para que el mensaje no se quede atrás si se añade uno.
+    private static readonly string BillingCycleHint = $"Use {string.Join(", ", Enum.GetNames<BillingCycle>())}.";
 
     // Punto decimal, como mucho 2 decimales, sin separador de miles ni símbolo de moneda.
     [GeneratedRegex(@"^\d+(\.\d{1,2})?$")]
@@ -124,17 +128,21 @@ public static partial class SubscriptionCsvImport
         var amount = Amount(Cell(SubscriptionCsvFormat.Amount), dialect, errors);
         var currency = Currency(Cell(SubscriptionCsvFormat.Currency), errors);
         var cycle = Enumeration<BillingCycle>(Cell(SubscriptionCsvFormat.BillingCycle), SubscriptionCsvFormat.BillingCycle,
-            ImportErrorCodes.InvalidBillingCycle, "Use Monthly or Yearly.", required: true, errors);
+            ImportErrorCodes.InvalidBillingCycle, BillingCycleHint, required: true, errors);
         var date = Date(Cell(SubscriptionCsvFormat.NextBillingDate), dialect, today, errors);
         var status = Enumeration<SubscriptionStatus>(Cell(SubscriptionCsvFormat.Status), SubscriptionCsvFormat.Status,
             ImportErrorCodes.InvalidStatus, "Use Active or Inactive.", required: false, errors) ?? SubscriptionStatus.Active;
+        var kind = Enumeration<SubscriptionKind>(Cell(SubscriptionCsvFormat.Kind), SubscriptionCsvFormat.Kind,
+            ImportErrorCodes.InvalidKind, "Use Subscription or Bill.", required: false, errors) ?? SubscriptionKind.Subscription;
+        var paymentUrl = PaymentUrl(Cell(SubscriptionCsvFormat.PaymentUrl), errors);
 
         if (errors.Count > 0)
         {
             return Invalid(record, errors);
         }
 
-        var values = new ImportRowValues(name!, category, amount!.Value, currency!, cycle!.Value.ToString(), date!.Value, status.ToString());
+        var values = new ImportRowValues(name!, category, amount!.Value, currency!, cycle!.Value.ToString(), date!.Value,
+            status.ToString(), kind.ToString(), paymentUrl);
         return new ImportRow(record.RowNumber, ImportRowStatus.Valid, values, []);
     }
 
@@ -230,6 +238,23 @@ public static partial class SubscriptionCsvImport
         }
 
         errors.Add(new ImportError(field, code, hint));
+        return null;
+    }
+
+    // Vacío = sin enlace; si hay valor, la misma regla del dominio (https, sin credenciales, ≤ 500).
+    private static string? PaymentUrl(string value, List<ImportError> errors)
+    {
+        if (value.Length == 0)
+        {
+            return null;
+        }
+
+        if (Subscription.IsValidPaymentUrl(value))
+        {
+            return value;
+        }
+
+        errors.Add(new ImportError(SubscriptionCsvFormat.PaymentUrl, ImportErrorCodes.InvalidPaymentUrl, Subscription.PaymentUrlMessage));
         return null;
     }
 

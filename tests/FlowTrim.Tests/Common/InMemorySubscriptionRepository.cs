@@ -24,10 +24,11 @@ public sealed class InMemorySubscriptionRepository : ISubscriptionRepository
     public Task<Subscription?> GetByIdAsync(string ownerId, Guid id, CancellationToken cancellationToken) =>
         Task.FromResult(Items.FirstOrDefault(s => MatchesOwner(s, ownerId) && s.Id == id));
 
-    public Task<IReadOnlyList<Subscription>> ListAsync(string ownerId, int skip, int take, CancellationToken cancellationToken)
+    public Task<IReadOnlyList<Subscription>> ListAsync(
+        string ownerId, SubscriptionKind? kind, int skip, int take, CancellationToken cancellationToken)
     {
         IReadOnlyList<Subscription> page = Items
-            .Where(s => MatchesOwner(s, ownerId))
+            .Where(s => MatchesOwner(s, ownerId) && (kind is null || s.Kind == kind))
             .OrderBy(s => s.NextBillingDate)
             .ThenBy(s => s.Name)
             .Skip(skip)
@@ -36,8 +37,8 @@ public sealed class InMemorySubscriptionRepository : ISubscriptionRepository
         return Task.FromResult(page);
     }
 
-    public Task<int> CountAsync(string ownerId, CancellationToken cancellationToken) =>
-        Task.FromResult(Items.Count(s => MatchesOwner(s, ownerId)));
+    public Task<int> CountAsync(string ownerId, SubscriptionKind? kind, CancellationToken cancellationToken) =>
+        Task.FromResult(Items.Count(s => MatchesOwner(s, ownerId) && (kind is null || s.Kind == kind)));
 
     public Task<IReadOnlyList<Subscription>> ListActiveAsync(string ownerId, CancellationToken cancellationToken)
     {

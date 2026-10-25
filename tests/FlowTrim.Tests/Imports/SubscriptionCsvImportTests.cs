@@ -36,6 +36,36 @@ public sealed class SubscriptionCsvImportTests
         Assert.Equal(new ImportRowValues("Spotify", null, 16900.5m, "USD", "Yearly", new DateOnly(2026, 1, 31), "Active"), row.Values);
     }
 
+    [Fact]
+    public void Parse_NewCyclesKindAndPaymentUrl_AreAccepted()
+    {
+        // EP-14 HU-72 FR-4: ciclos nuevos y columnas opcionales kind y payment_url.
+        var preview = Preview(
+            $"{Header},kind,payment_url\n" +
+            "Rent,1200000,COP,quarterly,2026-02-01,bill,https://pay.example.com\n" +
+            "Cleaning,10000,COP,Biweekly,2026-02-01,,\n");
+
+        Assert.Equal(
+            new ImportRowValues("Rent", null, 1200000m, "COP", "Quarterly", new DateOnly(2026, 2, 1), "Active", "Bill", "https://pay.example.com"),
+            preview.Rows[0].Values);
+        Assert.Equal(
+            new ImportRowValues("Cleaning", null, 10000m, "COP", "Biweekly", new DateOnly(2026, 2, 1), "Active"),
+            preview.Rows[1].Values);
+        Assert.Empty(preview.IgnoredColumns);
+    }
+
+    [Theory]
+    [InlineData("Loan,https://example.com", "kind", ImportErrorCodes.InvalidKind)]
+    [InlineData("Bill,http://example.com", "payment_url", ImportErrorCodes.InvalidPaymentUrl)]
+    [InlineData("Bill,https://user:pass@example.com", "payment_url", ImportErrorCodes.InvalidPaymentUrl)]
+    public void Parse_InvalidKindOrPaymentUrl_ReportsFieldAndCode(string cells, string field, string code)
+    {
+        var row = Assert.Single(Preview($"{Header},kind,payment_url\nRent,100,COP,Monthly,2026-02-01,{cells}").Rows);
+
+        var error = Assert.Single(row.Errors);
+        Assert.Equal((field, code), (error.Field, error.Code));
+    }
+
     [Theory]
     [InlineData("Netflix,38.900.5,COP,Monthly,2026-10-22", "amount", ImportErrorCodes.InvalidAmount)]
     [InlineData("Netflix,\"38,9\",COP,Monthly,2026-10-22", "amount", ImportErrorCodes.InvalidAmount)]
@@ -45,7 +75,7 @@ public sealed class SubscriptionCsvImportTests
     [InlineData("Netflix,0.00,COP,Monthly,2026-10-22", "amount", ImportErrorCodes.AmountNotPositive)]
     [InlineData("Netflix,100,CO,Monthly,2026-10-22", "currency", ImportErrorCodes.InvalidCurrency)]
     [InlineData("Netflix,100,C0P,Monthly,2026-10-22", "currency", ImportErrorCodes.InvalidCurrency)]
-    [InlineData("Netflix,100,COP,Weekly,2026-10-22", "billing_cycle", ImportErrorCodes.InvalidBillingCycle)]
+    [InlineData("Netflix,100,COP,Daily,2026-10-22", "billing_cycle", ImportErrorCodes.InvalidBillingCycle)]
     [InlineData("Netflix,100,COP,1,2026-10-22", "billing_cycle", ImportErrorCodes.InvalidBillingCycle)]
     [InlineData("Netflix,100,COP,Monthly,22/10/2026", "next_billing_date", ImportErrorCodes.InvalidDate)]
     [InlineData("Netflix,100,COP,Monthly,2026-02-30", "next_billing_date", ImportErrorCodes.InvalidDate)]
@@ -65,7 +95,7 @@ public sealed class SubscriptionCsvImportTests
     public void Parse_RowWithSeveralInvalidFields_ReportsEveryError()
     {
         var name = new string('n', Subscription.NameMaxLength + 1);
-        var row = Assert.Single(Preview($"{Header},status\n{name},-5,pesos,Weekly,tomorrow,Paused").Rows);
+        var row = Assert.Single(Preview($"{Header},status\n{name},-5,pesos,Daily,tomorrow,Paused").Rows);
 
         Assert.Equal(
             [

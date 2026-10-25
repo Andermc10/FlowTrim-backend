@@ -10,5 +10,10 @@ public sealed record SubscriptionResponse(
     string BillingCycle,
     DateOnly NextBillingDate,
     string Status,
+    string Kind,
+    string? PaymentUrl,
+    Guid? DefaultAccountId,
+    Guid? CategoryId,
+    decimal MonthlyEquivalent,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);

@@ -31,7 +31,9 @@ public static class SubscriptionCsvExporter
                 subscription.BillingCycle.ToString(),
                 Number(subscription.GetMonthlyEquivalent()),
                 subscription.NextBillingDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                subscription.Status.ToString());
+                subscription.Status.ToString(),
+                subscription.Kind.ToString(),
+                Text(subscription.PaymentUrl));
             csv.Append("\r\n");
         }
 

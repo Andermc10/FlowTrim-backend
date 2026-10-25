@@ -38,8 +38,8 @@ public sealed class RepositoryTests : IAsyncLifetime
         await using var scope = _services.CreateAsyncScope();
         var repository = scope.ServiceProvider.GetRequiredService<ISubscriptionRepository>();
 
-        Assert.Equal(["Netflix"], (await repository.ListAsync(OwnerA, 0, 20, default)).Select(s => s.Name));
-        Assert.Equal(1, await repository.CountAsync(OwnerA, default));
+        Assert.Equal(["Netflix"], (await repository.ListAsync(OwnerA, null, 0, 20, default)).Select(s => s.Name));
+        Assert.Equal(1, await repository.CountAsync(OwnerA, null, default));
         Assert.Equal(["Netflix"], (await repository.ListActiveAsync(OwnerA, default)).Select(s => s.Name));
         Assert.NotNull(await repository.GetByIdAsync(OwnerA, a.Id, default));
         Assert.Null(await repository.GetByIdAsync(OwnerA, b.Id, default));
@@ -57,8 +57,8 @@ public sealed class RepositoryTests : IAsyncLifetime
         await using var scope = _services.CreateAsyncScope();
         var repository = scope.ServiceProvider.GetRequiredService<ISubscriptionRepository>();
 
-        var firstPage = await repository.ListAsync(OwnerA, 0, 2, default);
-        var secondPage = await repository.ListAsync(OwnerA, 2, 2, default);
+        var firstPage = await repository.ListAsync(OwnerA, null, 0, 2, default);
+        var secondPage = await repository.ListAsync(OwnerA, null, 2, 2, default);
 
         Assert.Equal(["Disney", "Netflix"], firstPage.Select(s => s.Name));
         Assert.Equal(["Spotify"], secondPage.Select(s => s.Name));
