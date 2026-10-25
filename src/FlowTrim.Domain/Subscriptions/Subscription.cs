@@ -3,7 +3,8 @@ using FlowTrim.Domain.Common;
 namespace FlowTrim.Domain.Subscriptions;
 
 /// <summary>
-/// Suscripción recurrente registrada por el usuario. Protege sus invariantes mediante el
+/// Pago recurrente registrado por el usuario (suscripción o factura, EP-14). La clase, la API y la tabla conservan el
+/// nombre "subscription" (EP-14 D1). Protege sus invariantes mediante el
 /// factory <see cref="Create"/>; no expone setters públicos que puedan saltárselas.
 /// </summary>
 public sealed class Subscription
@@ -20,6 +21,9 @@ public sealed class Subscription
     /// <summary>Moneda por defecto del MVP (ISO 4217).</summary>
     public const string DefaultCurrency = "COP";
 
+    /// <summary>Longitud máxima del enlace de pago (EP-14 D9).</summary>
+    public const int PaymentUrlMaxLength = 500;
+
     public Guid Id { get; private set; }
     public string OwnerId { get; private set; } = null!;
     public string Name { get; private set; } = null!;
@@ -29,6 +33,10 @@ public sealed class Subscription
     public BillingCycle BillingCycle { get; private set; }
     public DateOnly NextBillingDate { get; private set; }
     public SubscriptionStatus Status { get; private set; }
+    public SubscriptionKind Kind { get; private set; }
+    public string? PaymentUrl { get; private set; }
+    public Guid? DefaultAccountId { get; private set; }
+    public Guid? CategoryId { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
 
@@ -47,6 +55,7 @@ public sealed class Subscription
         BillingCycle billingCycle,
         DateOnly nextBillingDate,
         SubscriptionStatus status,
+        RecurringPaymentDetails details,
         DateTimeOffset createdAt,
         DateTimeOffset updatedAt)
     {
@@ -59,6 +68,7 @@ public sealed class Subscription
         BillingCycle = billingCycle;
         NextBillingDate = nextBillingDate;
         Status = status;
+        ApplyDetails(details);
         CreatedAt = createdAt;
         UpdatedAt = updatedAt;
     }
@@ -68,7 +78,8 @@ public sealed class Subscription
     /// subject estable del usuario autenticado (<paramref name="ownerId"/>).
     /// Valida todas las invariantes y lanza <see cref="DomainValidationException"/> ante la primera
     /// que falle. El reloj se inyecta vía <paramref name="timeProvider"/> para que las marcas de
-    /// tiempo sean deterministas en pruebas (nunca se usa DateTime.UtcNow directamente).
+    /// tiempo sean deterministas en pruebas (nunca se usa DateTime.UtcNow directamente). Sin
+    /// <paramref name="details"/> se crea una suscripción sin enlace ni valores por defecto.
     /// </summary>
     public static Subscription Create(
         string? ownerId,
@@ -78,7 +89,8 @@ public sealed class Subscription
         string? currency,
         BillingCycle billingCycle,
         DateOnly nextBillingDate,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        RecurringPaymentDetails? details = null)
     {
         // Una suscripción sin propietario no puede existir: el aislamiento por usuario depende de ello.
         var validOwnerId = ownerId?.Trim() ?? string.Empty;
@@ -94,6 +106,7 @@ public sealed class Subscription
 
         var (validName, validCategory, validAmount, validCurrency) =
             ValidateAndNormalize(name, category, amount, currency, billingCycle);
+        var validDetails = ValidateDetails(details ?? RecurringPaymentDetails.Default);
 
         var now = timeProvider.GetUtcNow();
         return new Subscription(
@@ -106,13 +119,15 @@ public sealed class Subscription
             billingCycle,
             nextBillingDate,
             SubscriptionStatus.Active,
+            validDetails,
             now,
             now);
     }
 
     /// <summary>
     /// Actualiza los campos editables aplicando las mismas invariantes que <see cref="Create"/> y
-    /// refresca <see cref="UpdatedAt"/>. <see cref="Id"/> y <see cref="CreatedAt"/> no cambian.
+    /// refresca <see cref="UpdatedAt"/>. <see cref="Id"/> y <see cref="CreatedAt"/> no cambian. Sin
+    /// <paramref name="details"/> se conservan el tipo, el enlace y los valores por defecto actuales.
     /// </summary>
     public void Update(
         string? name,
@@ -122,7 +137,8 @@ public sealed class Subscription
         BillingCycle billingCycle,
         DateOnly nextBillingDate,
         SubscriptionStatus status,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        RecurringPaymentDetails? details = null)
     {
         var (validName, validCategory, validAmount, validCurrency) =
             ValidateAndNormalize(name, category, amount, currency, billingCycle);
@@ -132,6 +148,8 @@ public sealed class Subscription
             throw new DomainValidationException("status", "Status is not supported.");
         }
 
+        var validDetails = details is null ? null : ValidateDetails(details);
+
         Name = validName;
         Category = validCategory;
         Amount = validAmount;
@@ -139,13 +157,18 @@ public sealed class Subscription
         BillingCycle = billingCycle;
         NextBillingDate = nextBillingDate;
         Status = status;
+        if (validDetails is not null)
+        {
+            ApplyDetails(validDetails);
+        }
+
         UpdatedAt = timeProvider.GetUtcNow();
     }
 
     /// <summary>
-    /// Marca el cobro actual como pagado: la próxima fecha avanza exactamente un ciclo desde la actual (mensual +1 mes,
-    /// anual +1 año). <see cref="DateOnly.AddMonths"/> ajusta el fin de mes (31 ene → 28 feb) y los meses siguientes
-    /// conservan ese día. No registra ningún pago: FlowTrim sigue sin confirmar transacciones (HU-57).
+    /// Marca el cobro actual como pagado: la próxima fecha avanza exactamente un ciclo desde la actual con la regla de
+    /// <see cref="RecurrenceSchedule.Next"/> (nunca desde hoy: los ciclos saltados siguen vencidos). No registra ningún
+    /// pago (HU-57).
     /// </summary>
     public void AdvanceBillingDate(TimeProvider timeProvider)
     {
@@ -154,12 +177,7 @@ public sealed class Subscription
             throw new DomainValidationException("status", "Only active subscriptions can be marked as paid.");
         }
 
-        NextBillingDate = BillingCycle switch
-        {
-            BillingCycle.Monthly => NextBillingDate.AddMonths(1),
-            BillingCycle.Yearly => NextBillingDate.AddYears(1),
-            _ => throw new InvalidOperationException($"Unsupported billing cycle: {BillingCycle}"),
-        };
+        NextBillingDate = RecurrenceSchedule.Next(NextBillingDate, BillingCycle);
         UpdatedAt = timeProvider.GetUtcNow();
     }
 
@@ -224,15 +242,14 @@ public sealed class Subscription
     }
 
     /// <summary>
-    /// Costo mensual equivalente según el ciclo de cobro: mensual → importe; anual → importe / 12
-    /// (redondeado a 2 decimales). No suma ni convierte monedas; opera sobre un único importe.
+    /// Costo mensual equivalente según el ciclo de cobro (<see cref="RecurrenceSchedule.MonthlyEquivalent"/>, redondeado
+    /// a 2 decimales). No suma ni convierte monedas; opera sobre un único importe.
     /// </summary>
-    public decimal GetMonthlyEquivalent() => BillingCycle switch
-    {
-        BillingCycle.Monthly => Amount,
-        BillingCycle.Yearly => Math.Round(Amount / 12m, 2, MidpointRounding.AwayFromZero),
-        _ => throw new InvalidOperationException($"Unsupported billing cycle: {BillingCycle}")
-    };
+    public decimal GetMonthlyEquivalent() => RecurrenceSchedule.MonthlyEquivalent(Amount, BillingCycle);
+
+    /// <summary>Cobros esperados entre dos fechas incluidas (<see cref="RecurrenceSchedule.Occurrences"/>).</summary>
+    public IReadOnlyList<DateOnly> GetOccurrences(DateOnly from, DateOnly to) =>
+        RecurrenceSchedule.Occurrences(NextBillingDate, BillingCycle, from, to);
 
     /// <summary>
     /// Días enteros hasta el próximo cobro respecto a <paramref name="referenceDate"/>.
@@ -249,6 +266,51 @@ public sealed class Subscription
         <= 7 => AlertWindow.DueWithin7Days,
         _ => AlertWindow.Later
     };
+
+    /// <summary>
+    /// Enlace de pago válido (EP-14 D9): URL absoluta <c>https://</c> con servidor, hasta
+    /// <see cref="PaymentUrlMaxLength"/> caracteres y sin usuario ni contraseña. Pública para que la importación CSV use
+    /// la misma regla.
+    /// </summary>
+    public static bool IsValidPaymentUrl(string url) =>
+        url.Length <= PaymentUrlMaxLength
+        && Uri.TryCreate(url, UriKind.Absolute, out var uri)
+        && uri.Scheme == Uri.UriSchemeHttps
+        && uri.Host.Length > 0
+        && uri.UserInfo.Length == 0;
+
+    // Valida y normaliza los datos de pago recurrente: tipo definido y enlace https (vacío cuenta como ausente).
+    private static RecurringPaymentDetails ValidateDetails(RecurringPaymentDetails details)
+    {
+        if (!Enum.IsDefined(details.Kind))
+        {
+            throw new DomainValidationException("kind", "Kind is not supported.");
+        }
+
+        var paymentUrl = details.PaymentUrl?.Trim();
+        if (string.IsNullOrEmpty(paymentUrl))
+        {
+            paymentUrl = null;
+        }
+        else if (!IsValidPaymentUrl(paymentUrl))
+        {
+            throw new DomainValidationException("paymentUrl", PaymentUrlMessage);
+        }
+
+        return details with { PaymentUrl = paymentUrl };
+    }
+
+    /// <summary>Mensaje del enlace de pago inválido, compartido con la importación CSV.</summary>
+    public const string PaymentUrlMessage =
+        "Payment link must be an https:// address of at most 500 characters without a user name or password.";
+
+    private void ApplyDetails(RecurringPaymentDetails details)
+    {
+        Kind = details.Kind;
+        PaymentUrl = details.PaymentUrl;
+        DefaultAccountId = details.DefaultAccountId;
+        CategoryId = details.CategoryId;
+    }
 
     /// <summary>
     /// Valida que la moneda (ya en mayúsculas) tenga exactamente 3 letras A-Z: solo formato, sin lista ISO real.

@@ -25,17 +25,19 @@ internal sealed class SubscriptionRepository : ISubscriptionRepository
             s => s.OwnerId == ownerId && s.Id == id,
             cancellationToken);
 
-    public async Task<IReadOnlyList<Subscription>> ListAsync(string ownerId, int skip, int take, CancellationToken cancellationToken) =>
+    public async Task<IReadOnlyList<Subscription>> ListAsync(
+        string ownerId, SubscriptionKind? kind, int skip, int take, CancellationToken cancellationToken) =>
         await _dbContext.Subscriptions
-            .Where(s => s.OwnerId == ownerId)
+            .Where(s => s.OwnerId == ownerId && (kind == null || s.Kind == kind))
             .OrderBy(s => s.NextBillingDate)
             .ThenBy(s => s.Name)
             .Skip(skip)
             .Take(take)
             .ToListAsync(cancellationToken);
 
-    public async Task<int> CountAsync(string ownerId, CancellationToken cancellationToken) =>
-        await _dbContext.Subscriptions.CountAsync(s => s.OwnerId == ownerId, cancellationToken);
+    public async Task<int> CountAsync(string ownerId, SubscriptionKind? kind, CancellationToken cancellationToken) =>
+        await _dbContext.Subscriptions.CountAsync(
+            s => s.OwnerId == ownerId && (kind == null || s.Kind == kind), cancellationToken);
 
     public async Task<IReadOnlyList<Subscription>> ListActiveAsync(string ownerId, CancellationToken cancellationToken) =>
         await _dbContext.Subscriptions

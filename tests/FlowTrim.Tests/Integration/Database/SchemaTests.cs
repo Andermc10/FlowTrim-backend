@@ -83,7 +83,7 @@ public sealed class SchemaTests : IAsyncLifetime
     [InlineData("amount", "0", "ck_subscriptions_amount_positive")]
     [InlineData("amount", "-5", "ck_subscriptions_amount_positive")]
     [InlineData("owner_id", "''", "ck_subscriptions_owner_id_not_empty")]
-    [InlineData("billing_cycle", "'Weekly'", "ck_subscriptions_billing_cycle")]
+    [InlineData("billing_cycle", "'Daily'", "ck_subscriptions_billing_cycle")]
     [InlineData("status", "'Paused'", "ck_subscriptions_status")]
     public async Task Insert_InvalidSubscription_IsRejectedByCheckConstraint(string column, string value, string constraint)
     {

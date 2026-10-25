@@ -2,7 +2,9 @@ namespace FlowTrim.Application.Reports;
 
 /// <summary>
 /// Formato CSV de suscripciones compartido por la exportación (HU-52) y la importación (HU-43): el mismo archivo
-/// exportado se puede volver a importar. Columnas en snake_case y en este orden al exportar.
+/// exportado se puede volver a importar. Columnas en snake_case y en este orden al exportar; <c>kind</c> y
+/// <c>payment_url</c> (EP-14 HU-72) van al final para no mover las anteriores. La cuenta y la categoría por defecto no
+/// forman parte del CSV.
 /// </summary>
 public static class SubscriptionCsvFormat
 {
@@ -14,9 +16,11 @@ public static class SubscriptionCsvFormat
     public const string MonthlyEquivalent = "monthly_equivalent";
     public const string NextBillingDate = "next_billing_date";
     public const string Status = "status";
+    public const string Kind = "kind";
+    public const string PaymentUrl = "payment_url";
 
     public static readonly IReadOnlyList<string> Columns =
-        [Name, Category, Amount, Currency, BillingCycle, MonthlyEquivalent, NextBillingDate, Status];
+        [Name, Category, Amount, Currency, BillingCycle, MonthlyEquivalent, NextBillingDate, Status, Kind, PaymentUrl];
 
     /// <summary>Caracteres con los que una celda podría interpretarse como fórmula en una hoja de cálculo.</summary>
     public static readonly IReadOnlyList<char> FormulaPrefixes = ['=', '+', '-', '@', '\t', '\r'];

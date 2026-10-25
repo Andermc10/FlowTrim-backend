@@ -1,3 +1,9 @@
+using FlowTrim.Application.Accounts;
+using FlowTrim.Application.Categories;
+using FlowTrim.Application.Common;
+using FlowTrim.Domain.Categories;
+using FlowTrim.Domain.Subscriptions;
+
 namespace FlowTrim.Application.Subscriptions;
 
 /// <summary>
@@ -30,5 +36,60 @@ internal static class SubscriptionRequestValidator
         {
             errors["nextBillingDate"] = [NextBillingDateInPastMessage];
         }
+    }
+
+    /// <summary>
+    /// Tipo (ausente = <paramref name="currentKind"/>), enlace y cuenta y categoría por defecto (EP-14 HU-72, D7). La
+    /// cuenta y la categoría deben ser del propietario y la categoría de gastos; archivadas solo valen si no cambian
+    /// (editar un pago cuya cuenta se archivó después no falla). El enlace lo valida el dominio.
+    /// </summary>
+    public static async Task<RecurringPaymentDetails> ParseDetailsAsync(
+        string? kind,
+        string? paymentUrl,
+        Guid? defaultAccountId,
+        Guid? categoryId,
+        SubscriptionKind currentKind,
+        Subscription? current,
+        string ownerId,
+        IAccountRepository accounts,
+        ICategoryRepository categories,
+        IDictionary<string, string[]> errors,
+        CancellationToken cancellationToken)
+    {
+        var parsedKind = kind is null ? currentKind : EnumField.Parse<SubscriptionKind>(kind, "kind", "Kind", errors);
+
+        var accountId = defaultAccountId == Guid.Empty ? null : defaultAccountId;
+        if (accountId is { } wantedAccount)
+        {
+            var account = await accounts.GetByIdAsync(ownerId, wantedAccount, cancellationToken);
+            if (account is null)
+            {
+                errors["defaultAccountId"] = ["Account not found."];
+            }
+            else if (account.IsArchived && wantedAccount != current?.DefaultAccountId)
+            {
+                errors["defaultAccountId"] = ["The account is archived. Restore it to use it as the default."];
+            }
+        }
+
+        var wantedCategoryId = categoryId == Guid.Empty ? null : categoryId;
+        if (wantedCategoryId is { } wantedCategory)
+        {
+            var category = await categories.GetByIdAsync(ownerId, wantedCategory, cancellationToken);
+            if (category is null)
+            {
+                errors["categoryId"] = ["Category not found."];
+            }
+            else if (category.Kind != CategoryKind.Expense)
+            {
+                errors["categoryId"] = ["A recurring payment needs an expense category."];
+            }
+            else if (category.IsArchived && wantedCategory != current?.CategoryId)
+            {
+                errors["categoryId"] = ["The category is archived. Restore it to use it again."];
+            }
+        }
+
+        return new RecurringPaymentDetails(parsedKind, paymentUrl, accountId, wantedCategoryId);
     }
 }

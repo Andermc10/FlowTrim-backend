@@ -26,7 +26,7 @@ public sealed class SubscriptionManagementHandlersTests
         repo.Items.Add(NewSubscription("Disney", new DateOnly(2026, 11, 1)));
         var handler = new ListSubscriptionsHandler(repo, new TestCurrentUser());
 
-        var result = await handler.HandleAsync(1, 20, CancellationToken.None);
+        var result = (await handler.HandleAsync(1, 20, null, CancellationToken.None)).Value!;
 
         Assert.Equal(3, result.TotalCount);
         Assert.Equal(["Disney", "Netflix", "Spotify"], result.Items.Select(i => i.Name));
@@ -38,7 +38,7 @@ public sealed class SubscriptionManagementHandlersTests
         var repo = new InMemorySubscriptionRepository();
         var handler = new ListSubscriptionsHandler(repo, new TestCurrentUser());
 
-        var result = await handler.HandleAsync(0, 500, CancellationToken.None);
+        var result = (await handler.HandleAsync(0, 500, null, CancellationToken.None)).Value!;
 
         Assert.Equal(1, result.Page);
         Assert.Equal(ListSubscriptionsHandler.MaxPageSize, result.PageSize);
@@ -82,7 +82,7 @@ public sealed class SubscriptionManagementHandlersTests
     [Fact]
     public async Task Update_UnknownId_ReturnsNotFound()
     {
-        var handler = new UpdateSubscriptionHandler(new InMemorySubscriptionRepository(), Clock(), new TestCurrentUser());
+        var handler = new UpdateSubscriptionHandler(new InMemorySubscriptionRepository(), Clock(), new TestCurrentUser(), new InMemoryAccountRepository(), new InMemoryCategoryRepository());
 
         var result = await handler.HandleAsync(Guid.NewGuid(), ValidUpdate(), CancellationToken.None);
 
@@ -96,7 +96,7 @@ public sealed class SubscriptionManagementHandlersTests
         var subscription = NewSubscription("Netflix", new DateOnly(2026, 11, 1));
         repo.Items.Add(subscription);
         var later = FixedNow.AddDays(1);
-        var handler = new UpdateSubscriptionHandler(repo, new FixedTimeProvider(later), new TestCurrentUser());
+        var handler = new UpdateSubscriptionHandler(repo, new FixedTimeProvider(later), new TestCurrentUser(), new InMemoryAccountRepository(), new InMemoryCategoryRepository());
 
         var result = await handler.HandleAsync(subscription.Id, ValidUpdate(), CancellationToken.None);
 
@@ -113,7 +113,7 @@ public sealed class SubscriptionManagementHandlersTests
         var repo = new InMemorySubscriptionRepository();
         var subscription = NewSubscription("Netflix", new DateOnly(2026, 11, 1));
         repo.Items.Add(subscription);
-        var handler = new UpdateSubscriptionHandler(repo, Clock(), new TestCurrentUser());
+        var handler = new UpdateSubscriptionHandler(repo, Clock(), new TestCurrentUser(), new InMemoryAccountRepository(), new InMemoryCategoryRepository());
 
         // El importe ≤ 0 es una invariante de dominio: lanza y el manejador global la traduce a 400.
         var ex = await Assert.ThrowsAsync<DomainValidationException>(() =>
@@ -128,7 +128,7 @@ public sealed class SubscriptionManagementHandlersTests
         var repo = new InMemorySubscriptionRepository();
         var overdue = NewSubscription("Netflix", new DateOnly(2026, 10, 1));
         repo.Items.Add(overdue);
-        var handler = new UpdateSubscriptionHandler(repo, Clock(), new TestCurrentUser());
+        var handler = new UpdateSubscriptionHandler(repo, Clock(), new TestCurrentUser(), new InMemoryAccountRepository(), new InMemoryCategoryRepository());
 
         // Renombrar una suscripción vencida sin tocar su fecha no exige moverla (HU-56).
         var result = await handler.HandleAsync(
@@ -143,7 +143,7 @@ public sealed class SubscriptionManagementHandlersTests
         var repo = new InMemorySubscriptionRepository();
         var overdue = NewSubscription("Netflix", new DateOnly(2026, 10, 1));
         repo.Items.Add(overdue);
-        var handler = new UpdateSubscriptionHandler(repo, Clock(), new TestCurrentUser());
+        var handler = new UpdateSubscriptionHandler(repo, Clock(), new TestCurrentUser(), new InMemoryAccountRepository(), new InMemoryCategoryRepository());
 
         var result = await handler.HandleAsync(
             overdue.Id, ValidUpdate() with { NextBillingDate = new DateOnly(2026, 10, 5) }, CancellationToken.None);
@@ -159,7 +159,7 @@ public sealed class SubscriptionManagementHandlersTests
         var repo = new InMemorySubscriptionRepository();
         var subscription = NewSubscription("Netflix", new DateOnly(2026, 11, 1));
         repo.Items.Add(subscription);
-        var handler = new UpdateSubscriptionHandler(repo, Clock(), new TestCurrentUser());
+        var handler = new UpdateSubscriptionHandler(repo, Clock(), new TestCurrentUser(), new InMemoryAccountRepository(), new InMemoryCategoryRepository());
 
         var result = await handler.HandleAsync(subscription.Id, ValidUpdate(status: "Paused"), CancellationToken.None);
 

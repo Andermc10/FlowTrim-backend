@@ -11,11 +11,15 @@ public interface ISubscriptionRepository
     /// <summary>Devuelve la suscripción del propietario por id, o <c>null</c> si no existe.</summary>
     Task<Subscription?> GetByIdAsync(string ownerId, Guid id, CancellationToken cancellationToken);
 
-    /// <summary>Devuelve una página del propietario ordenada por próxima fecha de cobro y nombre.</summary>
-    Task<IReadOnlyList<Subscription>> ListAsync(string ownerId, int skip, int take, CancellationToken cancellationToken);
+    /// <summary>
+    /// Devuelve una página del propietario ordenada por próxima fecha de cobro y nombre; solo del tipo
+    /// <paramref name="kind"/> si se indica.
+    /// </summary>
+    Task<IReadOnlyList<Subscription>> ListAsync(
+        string ownerId, SubscriptionKind? kind, int skip, int take, CancellationToken cancellationToken);
 
-    /// <summary>Cuenta las suscripciones del propietario para la metadata de paginación.</summary>
-    Task<int> CountAsync(string ownerId, CancellationToken cancellationToken);
+    /// <summary>Cuenta las suscripciones del propietario (del tipo indicado, si lo hay) para la paginación.</summary>
+    Task<int> CountAsync(string ownerId, SubscriptionKind? kind, CancellationToken cancellationToken);
 
     /// <summary>Devuelve las suscripciones activas del propietario para el resumen financiero.</summary>
     Task<IReadOnlyList<Subscription>> ListActiveAsync(string ownerId, CancellationToken cancellationToken);

@@ -20,7 +20,7 @@ public sealed record ImportRow(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? DuplicateOf = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? DuplicateOfRow = null);
 
-/// <summary>Valores ya normalizados, listos para crear la suscripción.</summary>
+/// <summary>Valores ya normalizados, listos para crear la suscripción. Sin columna <c>kind</c> la fila es "Subscription".</summary>
 public sealed record ImportRowValues(
     string Name,
     string? Category,
@@ -28,7 +28,9 @@ public sealed record ImportRowValues(
     string Currency,
     string BillingCycle,
     DateOnly NextBillingDate,
-    string Status);
+    string Status,
+    string Kind = "Subscription",
+    string? PaymentUrl = null);
 
 /// <summary>Error de un campo: columna CSV, código estable y mensaje seguro.</summary>
 public sealed record ImportError(string Field, string Code, string Message);
@@ -70,6 +72,8 @@ public static class ImportErrorCodes
     public const string InvalidDate = "invalid_date";
     public const string DateInPast = "date_in_past";
     public const string InvalidStatus = "invalid_status";
+    public const string InvalidKind = "invalid_kind";
+    public const string InvalidPaymentUrl = "invalid_payment_url";
     public const string WrongCellCount = "wrong_cell_count";
 
     public const string FileRequired = "file_required";

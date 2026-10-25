@@ -162,6 +162,10 @@ namespace FlowTrim.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(60)")
                         .HasColumnName("category");
 
+                    b.Property<Guid?>("CategoryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("category_id");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at");
@@ -172,6 +176,17 @@ namespace FlowTrim.Infrastructure.Persistence.Migrations
                         .HasColumnType("char(3)")
                         .HasDefaultValue("COP")
                         .HasColumnName("currency");
+
+                    b.Property<Guid?>("DefaultAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("default_account_id");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("Subscription")
+                        .HasColumnName("kind");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -189,6 +204,11 @@ namespace FlowTrim.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("owner_id");
 
+                    b.Property<string>("PaymentUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("payment_url");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("text")
@@ -204,6 +224,12 @@ namespace FlowTrim.Infrastructure.Persistence.Migrations
                     b.HasIndex("NextBillingDate")
                         .HasDatabaseName("ix_subscriptions_next_billing_date");
 
+                    b.HasIndex("OwnerId", "CategoryId")
+                        .HasDatabaseName("ix_subscriptions_owner_id_category_id");
+
+                    b.HasIndex("OwnerId", "DefaultAccountId")
+                        .HasDatabaseName("ix_subscriptions_owner_id_default_account_id");
+
                     b.HasIndex("OwnerId", "NextBillingDate")
                         .HasDatabaseName("ix_subscriptions_owner_id_next_billing_date");
 
@@ -211,7 +237,9 @@ namespace FlowTrim.Infrastructure.Persistence.Migrations
                         {
                             t.HasCheckConstraint("ck_subscriptions_amount_positive", "amount > 0");
 
-                            t.HasCheckConstraint("ck_subscriptions_billing_cycle", "billing_cycle IN ('Monthly', 'Yearly')");
+                            t.HasCheckConstraint("ck_subscriptions_billing_cycle", "billing_cycle IN ('Monthly', 'Yearly', 'Weekly', 'Biweekly', 'Quarterly')");
+
+                            t.HasCheckConstraint("ck_subscriptions_kind", "kind IN ('Subscription', 'Bill')");
 
                             t.HasCheckConstraint("ck_subscriptions_owner_id_not_empty", "owner_id <> ''");
 

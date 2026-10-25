@@ -78,11 +78,14 @@ public sealed class GetTodayDashboardHandler : IGetTodayDashboardHandler
             todayTotals.Select(t => new PeriodTotals(t.Currency, t.Income, t.Expense)),
             subscriptions);
 
+        // Un elemento por cobro esperado: un pago semanal aparece 4 o 5 veces (EP-14 D4).
         var charges = subscriptions
-            .Where(s => s.Status == SubscriptionStatus.Active && s.NextBillingDate <= monthEnd)
-            .OrderBy(s => s.NextBillingDate)
-            .ThenBy(s => s.Name)
-            .Select(s => new MonthChargeResponse(s.Id, s.Name, s.Amount, s.Currency, s.NextBillingDate, s.NextBillingDate < today))
+            .Where(s => s.Status == SubscriptionStatus.Active)
+            .SelectMany(s => DailyAllowanceCalculator.ChargesUntil(s, monthEnd).Select(date => (Subscription: s, Date: date)))
+            .OrderBy(c => c.Date)
+            .ThenBy(c => c.Subscription.Name)
+            .Select(c => new MonthChargeResponse(
+                c.Subscription.Id, c.Subscription.Name, c.Subscription.Amount, c.Subscription.Currency, c.Date, c.Date < today))
             .ToList();
 
         return new TodayDashboardResponse(

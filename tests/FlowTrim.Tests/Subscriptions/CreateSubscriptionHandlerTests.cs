@@ -13,7 +13,7 @@ public sealed class CreateSubscriptionHandlerTests
     private static (CreateSubscriptionHandler Handler, InMemorySubscriptionRepository Repo) BuildHandler()
     {
         var repo = new InMemorySubscriptionRepository();
-        var handler = new CreateSubscriptionHandler(repo, new FixedTimeProvider(FixedNow), new TestCurrentUser());
+        var handler = new CreateSubscriptionHandler(repo, new FixedTimeProvider(FixedNow), new TestCurrentUser(), new InMemoryAccountRepository(), new InMemoryCategoryRepository());
         return (handler, repo);
     }
 
@@ -56,7 +56,9 @@ public sealed class CreateSubscriptionHandlerTests
         var handler = new CreateSubscriptionHandler(
             new InMemorySubscriptionRepository(),
             new FixedTimeProvider(new DateTimeOffset(2026, 10, 15, 3, 0, 0, TimeSpan.Zero)),
-            new TestCurrentUser());
+            new TestCurrentUser(),
+            new InMemoryAccountRepository(),
+            new InMemoryCategoryRepository());
 
         var result = await handler.HandleAsync(ValidRequest() with { NextBillingDate = new DateOnly(2026, 10, 14) }, CancellationToken.None);
 
@@ -97,7 +99,7 @@ public sealed class CreateSubscriptionHandlerTests
     {
         var (handler, _) = BuildHandler();
 
-        var result = await handler.HandleAsync(ValidRequest(billingCycle: "Weekly"), CancellationToken.None);
+        var result = await handler.HandleAsync(ValidRequest(billingCycle: "Daily"), CancellationToken.None);
 
         Assert.False(result.IsSuccess);
         Assert.True(result.Errors.ContainsKey("billingCycle"));

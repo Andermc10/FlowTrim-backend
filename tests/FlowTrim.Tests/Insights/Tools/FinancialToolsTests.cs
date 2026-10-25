@@ -444,14 +444,15 @@ public sealed class FinancialToolsTests
             return Inner.GetByIdAsync(ownerId, id, cancellationToken);
         }
 
-        public Task<IReadOnlyList<Subscription>> ListAsync(string ownerId, int skip, int take, CancellationToken cancellationToken)
+        public Task<IReadOnlyList<Subscription>> ListAsync(
+            string ownerId, SubscriptionKind? kind, int skip, int take, CancellationToken cancellationToken)
         {
             ReadCount++;
-            return Inner.ListAsync(ownerId, skip, take, cancellationToken);
+            return Inner.ListAsync(ownerId, kind, skip, take, cancellationToken);
         }
 
-        public Task<int> CountAsync(string ownerId, CancellationToken cancellationToken) =>
-            Inner.CountAsync(ownerId, cancellationToken);
+        public Task<int> CountAsync(string ownerId, SubscriptionKind? kind, CancellationToken cancellationToken) =>
+            Inner.CountAsync(ownerId, kind, cancellationToken);
 
         public Task AddImportedAsync(string ownerId, Func<IReadOnlyList<Subscription>, IReadOnlyList<Subscription>> selectNew,
             CancellationToken cancellationToken) => Inner.AddImportedAsync(ownerId, selectNew, cancellationToken);

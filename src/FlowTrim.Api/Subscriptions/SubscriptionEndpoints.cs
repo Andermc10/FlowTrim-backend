@@ -31,10 +31,11 @@ public static class SubscriptionEndpoints
         (await handler.HandleAsync(request, cancellationToken))
             .ToHttpResult(created => Results.Created($"/api/subscriptions/{created.Id}", created));
 
-    // Lista paginada (orden: próxima fecha de cobro, luego nombre).
+    // Lista paginada (orden: próxima fecha de cobro, luego nombre), filtrable por tipo. 200 / 400 si el tipo no existe.
     private static async Task<IResult> ListAsync(
-        IListSubscriptionsHandler handler, CancellationToken cancellationToken, int? page, int? pageSize) =>
-        Results.Ok(await handler.HandleAsync(page ?? 1, pageSize ?? ListSubscriptionsHandler.DefaultPageSize, cancellationToken));
+        IListSubscriptionsHandler handler, CancellationToken cancellationToken, int? page, int? pageSize, string? kind) =>
+        (await handler.HandleAsync(page ?? 1, pageSize ?? ListSubscriptionsHandler.DefaultPageSize, kind, cancellationToken))
+            .ToHttpResult(Results.Ok);
 
     // Activas ordenadas por fecha, con cuenta regresiva y ventana de alerta calculadas en el servidor.
     private static async Task<IResult> GetUpcomingAsync(IGetUpcomingChargesHandler handler, CancellationToken cancellationToken) =>

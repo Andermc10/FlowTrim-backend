@@ -20,7 +20,7 @@ public sealed class OwnerIsolationTests
         repository.Items.Add(NewSubscription("Owner B", "owner-b"));
         var handler = new ListSubscriptionsHandler(repository, new TestCurrentUser("owner-a"));
 
-        var result = await handler.HandleAsync(1, 20, CancellationToken.None);
+        var result = (await handler.HandleAsync(1, 20, null, CancellationToken.None)).Value!;
 
         var item = Assert.Single(result.Items);
         Assert.Equal("Owner A", item.Name);
@@ -35,7 +35,7 @@ public sealed class OwnerIsolationTests
         var currentUser = new TestCurrentUser("owner-a");
 
         var get = new GetSubscriptionHandler(repository, currentUser);
-        var update = new UpdateSubscriptionHandler(repository, new FixedTimeProvider(FixedNow), currentUser);
+        var update = new UpdateSubscriptionHandler(repository, new FixedTimeProvider(FixedNow), currentUser, new InMemoryAccountRepository(), new InMemoryCategoryRepository());
         var delete = new DeleteSubscriptionHandler(repository, currentUser);
 
         Assert.Null(await get.HandleAsync(subscription.Id, CancellationToken.None));
