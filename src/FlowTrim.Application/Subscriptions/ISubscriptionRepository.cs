@@ -1,4 +1,5 @@
 using FlowTrim.Domain.Subscriptions;
+using FlowTrim.Domain.Transactions;
 
 namespace FlowTrim.Application.Subscriptions;
 
@@ -36,6 +37,12 @@ public interface ISubscriptionRepository
         string ownerId,
         Func<IReadOnlyList<Subscription>, IReadOnlyList<Subscription>> selectNew,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Marca como pagado registrando el gasto (EP-14 HU-73): inserta <paramref name="payment"/> y guarda la nueva fecha de
+    /// <paramref name="subscription"/> en un único guardado; si algo falla no se guarda ninguno de los dos.
+    /// </summary>
+    Task RecordPaymentAsync(Subscription subscription, Transaction payment, CancellationToken cancellationToken);
 
     /// <summary>Persiste los cambios de una suscripción existente.</summary>
     Task UpdateAsync(Subscription subscription, CancellationToken cancellationToken);

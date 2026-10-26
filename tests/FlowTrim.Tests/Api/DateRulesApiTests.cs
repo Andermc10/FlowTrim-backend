@@ -52,7 +52,7 @@ public sealed class DateRulesApiTests : IClassFixture<FlowTrimApiFactory>
 
         Assert.Equal(HttpStatusCode.NotFound, foreign.StatusCode);
         Assert.Equal(HttpStatusCode.OK, paid.StatusCode);
-        Assert.Equal("2026-11-20", (await paid.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("nextBillingDate").GetString());
+        Assert.Equal("2026-11-20", (await paid.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("subscription").GetProperty("nextBillingDate").GetString());
 
         await owner.PutAsJsonAsync($"/api/subscriptions/{id}", new
         {

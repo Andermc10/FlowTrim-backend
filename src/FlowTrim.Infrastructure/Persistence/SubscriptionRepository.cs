@@ -1,5 +1,6 @@
 using FlowTrim.Application.Subscriptions;
 using FlowTrim.Domain.Subscriptions;
+using FlowTrim.Domain.Transactions;
 using Microsoft.EntityFrameworkCore;
 
 namespace FlowTrim.Infrastructure.Persistence;
@@ -68,6 +69,14 @@ internal sealed class SubscriptionRepository : ISubscriptionRepository
         _dbContext.Subscriptions.AddRange(selectNew(existing));
         await _dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+    }
+
+    public async Task RecordPaymentAsync(Subscription subscription, Transaction payment, CancellationToken cancellationToken)
+    {
+        // SaveChanges envuelve ambos cambios en una sola transacción de base de datos.
+        _dbContext.Transactions.Add(payment);
+        _dbContext.Subscriptions.Update(subscription);
+        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
     public async Task UpdateAsync(Subscription subscription, CancellationToken cancellationToken)

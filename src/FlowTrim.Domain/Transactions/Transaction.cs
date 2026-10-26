@@ -29,6 +29,13 @@ public sealed class Transaction
     public DateOnly Date { get; private set; }
     public string? Description { get; private set; }
     public string? Note { get; private set; }
+
+    /// <summary>
+    /// Pago recurrente que originó el movimiento al marcarlo como pagado (EP-14 HU-73). Editar el movimiento no lo
+    /// cambia; si se borra el pago, la base de datos lo deja en nulo y el movimiento se conserva.
+    /// </summary>
+    public Guid? RecurringPaymentId { get; private set; }
+
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
 
@@ -48,12 +55,14 @@ public sealed class Transaction
         DateOnly date,
         string? description,
         string? note,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        Guid? recurringPaymentId = null)
     {
         var transaction = new Transaction
         {
             Id = Guid.NewGuid(),
             OwnerId = OwnerIdentity.Require(ownerId),
+            RecurringPaymentId = recurringPaymentId,
             CreatedAt = timeProvider.GetUtcNow(),
         };
         transaction.Apply(type, accountId, toAccountId, categoryId, amount, date, description, note, transaction.CreatedAt);

@@ -12,7 +12,8 @@ public sealed record TransactionFilter(
     Guid? AccountId,
     Guid? CategoryId,
     TransactionType? Type,
-    string? Search);
+    string? Search,
+    Guid? RecurringPaymentId = null);
 
 /// <summary>Totales de una moneda para todo el filtro. Las transferencias nunca cuentan como ingreso ni gasto.</summary>
 public sealed record CurrencyTotals(string Currency, decimal Income, decimal Expense, decimal Net);

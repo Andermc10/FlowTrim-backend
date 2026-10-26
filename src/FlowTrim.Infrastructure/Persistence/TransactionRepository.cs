@@ -110,6 +110,11 @@ internal sealed class TransactionRepository : ITransactionRepository
             query = query.Where(t => t.Type == type);
         }
 
+        if (filter.RecurringPaymentId is { } recurringPaymentId)
+        {
+            query = query.Where(t => t.RecurringPaymentId == recurringPaymentId);
+        }
+
         if (filter.Search is { } search)
         {
             // ILIKE con los comodines del usuario escapados: "50%" busca el texto literal.

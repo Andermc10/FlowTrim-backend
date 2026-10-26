@@ -76,7 +76,7 @@ Every route except `/api/health` needs a bearer token (`401` without it, `403` i
 | Area | Routes |
 |---|---|
 | Health | `GET /api/health` → `200` or `503`, no internals |
-| Recurring payments | `POST · GET /api/subscriptions` (`?kind=Subscription` or `?kind=Bill`) · `GET · PUT · DELETE /api/subscriptions/{id}` · `GET /api/subscriptions/upcoming` · `POST /api/subscriptions/{id}/mark-paid` — kinds `Subscription`/`Bill`, cycles `Weekly`/`Biweekly`/`Monthly`/`Quarterly`/`Yearly`, optional `https://` payment link and default account/expense category. The UI calls them recurring payments; the routes and the `subscriptions` table keep their MVP names |
+| Recurring payments | `POST · GET /api/subscriptions` (`?kind=Subscription` or `?kind=Bill`) · `GET · PUT · DELETE /api/subscriptions/{id}` · `GET /api/subscriptions/upcoming` · `POST /api/subscriptions/{id}/mark-paid` (optional body `{ accountId, amount, date, categoryId }` records the expense in a same-currency account and moves the date in one save; without it only the date moves) · `GET /api/subscriptions/{id}/payments` (last 10 linked expenses) — kinds `Subscription`/`Bill`, cycles `Weekly`/`Biweekly`/`Monthly`/`Quarterly`/`Yearly`, optional `https://` payment link and default account/expense category. The UI calls them recurring payments; the routes and the `subscriptions` table keep their MVP names |
 | Usage | `POST · GET /api/subscriptions/{id}/usage-records` · `GET /api/subscriptions/{id}/cost-per-use?from=&to=` |
 | Spending | `GET /api/summary` · `POST /api/simulations` · `GET /api/analytics?months=12` · `GET /api/reports/subscriptions.csv` |
 | Import | `POST /api/subscription-imports/preview` · `POST /api/subscription-imports/confirm` (multipart `file`) |

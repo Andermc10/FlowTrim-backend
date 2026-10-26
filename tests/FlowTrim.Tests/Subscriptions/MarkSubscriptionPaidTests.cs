@@ -51,13 +51,16 @@ public sealed class MarkSubscriptionPaidTests
         var repository = new InMemorySubscriptionRepository();
         var subscription = Make(BillingCycle.Monthly, new DateOnly(2026, 10, 18));
         repository.Items.Add(subscription);
-        var handler = new MarkSubscriptionPaidHandler(repository, new FixedTimeProvider(PaidAt), new TestCurrentUser());
+        var handler = new MarkSubscriptionPaidHandler(
+            repository, new InMemoryAccountRepository(), new InMemoryCategoryRepository(), new FixedTimeProvider(PaidAt), new TestCurrentUser());
 
-        var result = await handler.HandleAsync(subscription.Id, CancellationToken.None);
+        var result = await handler.HandleAsync(subscription.Id, null, CancellationToken.None);
 
         Assert.Equal(HandlerResultKind.Success, result.Kind);
-        Assert.Equal(new DateOnly(2026, 11, 18), result.Value!.NextBillingDate);
+        Assert.Equal(new DateOnly(2026, 11, 18), result.Value!.Subscription.NextBillingDate);
         Assert.Equal(1, repository.SaveCount);
+        Assert.Null(result.Value.Transaction);
+        Assert.Empty(repository.Payments);
     }
 
     [Fact]
@@ -66,9 +69,10 @@ public sealed class MarkSubscriptionPaidTests
         var repository = new InMemorySubscriptionRepository();
         var foreign = Make(BillingCycle.Monthly, new DateOnly(2026, 10, 18), owner: "auth0|someone-else");
         repository.Items.Add(foreign);
-        var handler = new MarkSubscriptionPaidHandler(repository, new FixedTimeProvider(PaidAt), new TestCurrentUser());
+        var handler = new MarkSubscriptionPaidHandler(
+            repository, new InMemoryAccountRepository(), new InMemoryCategoryRepository(), new FixedTimeProvider(PaidAt), new TestCurrentUser());
 
-        var result = await handler.HandleAsync(foreign.Id, CancellationToken.None);
+        var result = await handler.HandleAsync(foreign.Id, null, CancellationToken.None);
 
         Assert.Equal(HandlerResultKind.NotFound, result.Kind);
         Assert.Equal(new DateOnly(2026, 10, 18), foreign.NextBillingDate);

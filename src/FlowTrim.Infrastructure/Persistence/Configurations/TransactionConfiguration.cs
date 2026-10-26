@@ -10,7 +10,9 @@ namespace FlowTrim.Infrastructure.Persistence.Configurations;
 /// <summary>
 /// Mapeo Fluent de <see cref="Transaction"/> a la tabla <c>transactions</c> (EP-12). Las FK son compuestas con
 /// <c>owner_id</c> (D8): la base de datos rechaza por sí misma un movimiento que apunte a la cuenta o la categoría de
-/// otro usuario. Todas son <c>RESTRICT</c>: nunca se borra historial en cascada.
+/// otro usuario. Todas son <c>RESTRICT</c>: nunca se borra historial en cascada. La FK al pago recurrente (EP-14 HU-73)
+/// usa <c>ON DELETE SET NULL (recurring_payment_id)</c>, que EF no modela: la crea la migración
+/// <c>LinkTransactionsToRecurringPayments</c> con SQL.
 /// </summary>
 internal sealed class TransactionConfiguration : IEntityTypeConfiguration<Transaction>
 {
@@ -41,6 +43,7 @@ internal sealed class TransactionConfiguration : IEntityTypeConfiguration<Transa
         builder.Property(t => t.Date).HasColumnType("date").IsRequired();
         builder.Property(t => t.Description).HasMaxLength(Transaction.DescriptionMaxLength);
         builder.Property(t => t.Note).HasMaxLength(Transaction.NoteMaxLength);
+        builder.Property(t => t.RecurringPaymentId).HasColumnType("uuid");
         builder.Property(t => t.CreatedAt).HasColumnType("timestamptz").IsRequired();
         builder.Property(t => t.UpdatedAt).HasColumnType("timestamptz").IsRequired();
 
@@ -73,5 +76,7 @@ internal sealed class TransactionConfiguration : IEntityTypeConfiguration<Transa
         builder.HasIndex(t => new { t.OwnerId, t.AccountId }).HasDatabaseName("ix_transactions_owner_id_account_id");
         builder.HasIndex(t => new { t.OwnerId, t.ToAccountId }).HasDatabaseName("ix_transactions_owner_id_to_account_id");
         builder.HasIndex(t => new { t.OwnerId, t.CategoryId }).HasDatabaseName("ix_transactions_owner_id_category_id");
+        builder.HasIndex(t => new { t.OwnerId, t.RecurringPaymentId })
+            .HasDatabaseName("ix_transactions_owner_id_recurring_payment_id");
     }
 }

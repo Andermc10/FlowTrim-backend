@@ -33,7 +33,10 @@ public sealed class FlowTrimApiFactory : WebApplicationFactory<Program>
     /// </summary>
     public string? DatabaseConnectionString { get; init; }
 
-    public InMemorySubscriptionRepository Subscriptions { get; } = new();
+    /// <summary>Registra los pagos (HU-73) en la misma lista de movimientos que usan las cuentas.</summary>
+    public InMemorySubscriptionRepository Subscriptions => _subscriptions ??= new() { Payments = Accounts.Transactions };
+
+    private InMemorySubscriptionRepository? _subscriptions;
 
     public InMemoryUsageRecordRepository UsageRecords { get; } = new();
 
