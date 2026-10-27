@@ -469,6 +469,10 @@ public sealed class FinancialToolsTests
             return Inner.ListAllAsync(ownerId, cancellationToken);
         }
 
+        public Task RecordPaymentAsync(
+            Subscription subscription, Domain.Transactions.Transaction payment, CancellationToken cancellationToken) =>
+            Inner.RecordPaymentAsync(subscription, payment, cancellationToken);
+
         public Task UpdateAsync(Subscription subscription, CancellationToken cancellationToken) =>
             Inner.UpdateAsync(subscription, cancellationToken);
 

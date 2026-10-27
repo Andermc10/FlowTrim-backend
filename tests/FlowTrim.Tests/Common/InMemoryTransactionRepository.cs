@@ -76,6 +76,7 @@ public sealed class InMemoryTransactionRepository : ITransactionRepository
             && (filter.AccountId is null || t.AccountId == filter.AccountId || t.ToAccountId == filter.AccountId)
             && (filter.CategoryId is null || t.CategoryId == filter.CategoryId)
             && (filter.Type is null || t.Type == filter.Type)
+            && (filter.RecurringPaymentId is null || t.RecurringPaymentId == filter.RecurringPaymentId)
             && (filter.Search is null
                 || (t.Description?.Contains(filter.Search, StringComparison.OrdinalIgnoreCase) ?? false)));
 }

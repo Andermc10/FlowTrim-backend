@@ -58,10 +58,15 @@ public sealed class DailyFinanceSchemaTests : IAsyncLifetime
         ];
         Assert.All(expectedConstraints, name => Assert.Contains(name, constraints));
 
+        // Las FK a cuentas y categorías son RESTRICT; la del pago recurrente (EP-14 HU-73) solo quita el vínculo.
         var restrict = await QueryAsync(
             "SELECT conname || ':' || confdeltype::text FROM pg_constraint " +
             "WHERE contype = 'f' AND conrelid = 'transactions'::regclass");
-        Assert.All(restrict, foreignKey => Assert.EndsWith(":r", foreignKey));
+        Assert.Equal(4, restrict.Count);
+        Assert.All(
+            restrict.Where(foreignKey => !foreignKey.StartsWith("fk_transactions_subscriptions_", StringComparison.Ordinal)),
+            foreignKey => Assert.EndsWith(":r", foreignKey));
+        Assert.Contains("fk_transactions_subscriptions_owner_id_recurring_payment_id:n", restrict);
 
         var indexes = await QueryAsync("SELECT indexname FROM pg_indexes WHERE schemaname = 'public'");
         string[] expectedIndexes =

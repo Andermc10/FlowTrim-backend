@@ -221,6 +221,9 @@ namespace FlowTrim.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_subscriptions");
 
+                    b.HasAlternateKey("OwnerId", "Id")
+                        .HasName("ux_subscriptions_owner_id_id");
+
                     b.HasIndex("NextBillingDate")
                         .HasDatabaseName("ix_subscriptions_next_billing_date");
 
@@ -290,6 +293,10 @@ namespace FlowTrim.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("owner_id");
 
+                    b.Property<Guid?>("RecurringPaymentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("recurring_payment_id");
+
                     b.Property<Guid?>("ToAccountId")
                         .HasColumnType("uuid")
                         .HasColumnName("to_account_id");
@@ -315,6 +322,9 @@ namespace FlowTrim.Infrastructure.Persistence.Migrations
                     b.HasIndex("OwnerId", "Date")
                         .IsDescending(false, true)
                         .HasDatabaseName("ix_transactions_owner_id_date");
+
+                    b.HasIndex("OwnerId", "RecurringPaymentId")
+                        .HasDatabaseName("ix_transactions_owner_id_recurring_payment_id");
 
                     b.HasIndex("OwnerId", "ToAccountId")
                         .HasDatabaseName("ix_transactions_owner_id_to_account_id");

@@ -29,6 +29,10 @@ internal sealed class SubscriptionConfiguration : IEntityTypeConfiguration<Subsc
 
         builder.HasKey(s => s.Id).HasName("pk_subscriptions");
 
+        // Destino de la FK compuesta de transactions.recurring_payment_id (EP-14 HU-73): un movimiento solo puede
+        // apuntar a un pago del mismo propietario.
+        builder.HasAlternateKey(s => new { s.OwnerId, s.Id }).HasName("ux_subscriptions_owner_id_id");
+
         builder.Property(s => s.Id).HasColumnType("uuid");
         builder.Property(s => s.OwnerId).HasMaxLength(Subscription.OwnerIdMaxLength).IsRequired();
         builder.Property(s => s.Name).HasMaxLength(Subscription.NameMaxLength).IsRequired();

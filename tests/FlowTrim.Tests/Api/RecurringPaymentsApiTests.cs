@@ -161,7 +161,7 @@ public sealed class RecurringPaymentsApiTests : IClassFixture<FlowTrimApiFactory
 
         var paid = await client.PostAsync($"/api/subscriptions/{id}/mark-paid", null);
 
-        Assert.Equal("2026-11-08", (await paid.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("nextBillingDate").GetString());
+        Assert.Equal("2026-11-08", (await paid.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("subscription").GetProperty("nextBillingDate").GetString());
     }
 
     private string NewOwner() => $"auth0|recurring-{Guid.NewGuid():N}";

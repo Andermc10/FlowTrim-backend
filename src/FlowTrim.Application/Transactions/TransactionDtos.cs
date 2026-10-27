@@ -36,7 +36,8 @@ public sealed record TransactionResponse(
     string? Description,
     string? Note,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    Guid? RecurringPaymentId);
 
 /// <summary>Página del listado con los totales por moneda de todo el filtro (no solo de la página).</summary>
 public sealed record TransactionListResponse(
@@ -76,6 +77,7 @@ internal static class TransactionMapper
             transaction.Description,
             transaction.Note,
             transaction.CreatedAt,
-            transaction.UpdatedAt);
+            transaction.UpdatedAt,
+            transaction.RecurringPaymentId);
     }
 }

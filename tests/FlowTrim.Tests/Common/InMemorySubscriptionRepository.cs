@@ -1,5 +1,6 @@
 using FlowTrim.Application.Subscriptions;
 using FlowTrim.Domain.Subscriptions;
+using FlowTrim.Domain.Transactions;
 
 namespace FlowTrim.Tests.Common;
 
@@ -80,6 +81,25 @@ public sealed class InMemorySubscriptionRepository : ISubscriptionRepository
         {
             _importLock.Release();
         }
+    }
+
+    /// <summary>Movimientos donde se registran los pagos; la factoría la comparte con las cuentas para los saldos.</summary>
+    public List<Transaction> Payments { get; set; } = [];
+
+    /// <summary>Hace fallar el próximo registro de pago sin guardar nada (prueba de atomicidad, HU-73 AC-2).</summary>
+    public bool FailNextPayment { get; set; }
+
+    public Task RecordPaymentAsync(Subscription subscription, Transaction payment, CancellationToken cancellationToken)
+    {
+        if (FailNextPayment)
+        {
+            FailNextPayment = false;
+            throw new InvalidOperationException("Simulated persistence failure.");
+        }
+
+        Payments.Add(payment);
+        SaveCount++;
+        return Task.CompletedTask;
     }
 
     public Task UpdateAsync(Subscription subscription, CancellationToken cancellationToken)

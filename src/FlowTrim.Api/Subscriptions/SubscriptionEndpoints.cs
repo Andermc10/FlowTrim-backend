@@ -1,4 +1,6 @@
 using FlowTrim.Application.Subscriptions;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using FlowTrim.Application.Usage;
 
 namespace FlowTrim.Api.Subscriptions;
@@ -20,6 +22,7 @@ public static class SubscriptionEndpoints
         group.MapPut("/{id:guid}", UpdateAsync).WithName("UpdateSubscription");
         group.MapDelete("/{id:guid}", DeleteAsync).WithName("DeleteSubscription");
         group.MapPost("/{id:guid}/mark-paid", MarkPaidAsync).WithName("MarkSubscriptionPaid");
+        group.MapGet("/{id:guid}/payments", ListPaymentsAsync).WithName("ListSubscriptionPayments");
         group.MapPost("/{id:guid}/usage-records", RegisterUsageAsync).WithName("RegisterUsage");
         group.MapGet("/{id:guid}/usage-records", ListUsageAsync).WithName("ListUsage");
         group.MapGet("/{id:guid}/cost-per-use", GetCostPerUseAsync).WithName("GetCostPerUse");
@@ -56,9 +59,21 @@ public static class SubscriptionEndpoints
             ? Results.NoContent()
             : ProblemResults.NotFound();
 
-    // Avanza la próxima fecha un ciclo; no registra ningún pago (HU-57). 200 / 400 si está inactiva / 404.
-    private static async Task<IResult> MarkPaidAsync(Guid id, IMarkSubscriptionPaidHandler handler, CancellationToken cancellationToken) =>
-        (await handler.HandleAsync(id, cancellationToken)).ToHttpResult(Results.Ok);
+    // Avanza la próxima fecha un ciclo (HU-57) y, con cuerpo y cuenta, registra el gasto en la misma operación (HU-73).
+    // El cuerpo es opcional: sin él solo se mueve la fecha. 200 / 400 (campos, inactiva) / 404.
+    private static async Task<IResult> MarkPaidAsync(
+        Guid id,
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] MarkPaidRequest? request,
+        IMarkSubscriptionPaidHandler handler,
+        CancellationToken cancellationToken) =>
+        (await handler.HandleAsync(id, request, cancellationToken)).ToHttpResult(Results.Ok);
+
+    // Últimos 10 gastos registrados al marcar el pago como pagado (los más recientes primero). 200 / 404.
+    private static async Task<IResult> ListPaymentsAsync(
+        Guid id, IListSubscriptionPaymentsHandler handler, CancellationToken cancellationToken) =>
+        await handler.HandleAsync(id, cancellationToken) is { } payments
+            ? Results.Ok(payments)
+            : ProblemResults.NotFound();
 
     // Uso declarado (no verificado). 201 / 400 / 404 si la suscripción no existe.
     private static async Task<IResult> RegisterUsageAsync(
