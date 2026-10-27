@@ -33,6 +33,7 @@ public static class DependencyInjection
         services.AddScoped<FlowTrim.Application.Accounts.IAccountRepository, AccountRepository>();
         services.AddScoped<FlowTrim.Application.Categories.ICategoryRepository, CategoryRepository>();
         services.AddScoped<FlowTrim.Application.Transactions.ITransactionRepository, TransactionRepository>();
+        services.AddScoped<FlowTrim.Application.Budgets.IBudgetRepository, BudgetRepository>();
         return services;
     }
 

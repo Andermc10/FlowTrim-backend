@@ -81,6 +81,16 @@ public sealed class InMemoryTransactionRepository : ITransactionRepository
         return Task.FromResult(totals);
     }
 
+    public Task<IReadOnlyList<CategoryExpense>> GetExpensesByCategoryAsync(
+        string ownerId, DateOnly from, DateOnly to, CancellationToken cancellationToken)
+    {
+        IReadOnlyList<CategoryExpense> expenses = Filtered(ownerId, new TransactionFilter(from, to, null, null, TransactionType.Expense, null))
+            .GroupBy(t => (CategoryId: t.CategoryId!.Value, Currency: _accounts.Items.Single(a => a.Id == t.AccountId).Currency))
+            .Select(group => new CategoryExpense(group.Key.CategoryId, group.Key.Currency, group.Sum(t => t.Amount)))
+            .ToList();
+        return Task.FromResult(expenses);
+    }
+
     public Task UpdateAsync(Transaction transaction, CancellationToken cancellationToken) => Task.CompletedTask;
 
     public Task<bool> DeleteAsync(string ownerId, Guid id, CancellationToken cancellationToken) =>

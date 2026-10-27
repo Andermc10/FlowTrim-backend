@@ -81,6 +81,55 @@ namespace FlowTrim.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("FlowTrim.Domain.Budgets.Budget", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("category_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasColumnType("char(3)")
+                        .HasColumnName("currency");
+
+                    b.Property<decimal>("Limit")
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("limit_amount");
+
+                    b.Property<string>("OwnerId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("owner_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_budgets");
+
+                    b.HasIndex("OwnerId", "CategoryId", "Currency")
+                        .IsUnique()
+                        .HasDatabaseName("ux_budgets_owner_id_category_id_currency");
+
+                    b.ToTable("budgets", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_budgets_limit_positive", "limit_amount > 0");
+
+                            t.HasCheckConstraint("ck_budgets_owner_id_not_empty", "owner_id <> ''");
+                        });
+                });
+
             modelBuilder.Entity("FlowTrim.Domain.Categories.Category", b =>
                 {
                     b.Property<Guid>("Id")
@@ -389,6 +438,17 @@ namespace FlowTrim.Infrastructure.Persistence.Migrations
                         {
                             t.HasCheckConstraint("ck_usage_records_usage_count_non_negative", "usage_count >= 0");
                         });
+                });
+
+            modelBuilder.Entity("FlowTrim.Domain.Budgets.Budget", b =>
+                {
+                    b.HasOne("FlowTrim.Domain.Categories.Category", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId", "CategoryId")
+                        .HasPrincipalKey("OwnerId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_budgets_categories_owner_id_category_id");
                 });
 
             modelBuilder.Entity("FlowTrim.Domain.Transactions.Transaction", b =>
