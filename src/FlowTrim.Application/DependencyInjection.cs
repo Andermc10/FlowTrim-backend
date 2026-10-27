@@ -23,6 +23,7 @@ public static class DependencyInjection
         services.AddScoped<Budgets.ICreateBudgetHandler, Budgets.CreateBudgetHandler>();
         services.AddScoped<Budgets.IUpdateBudgetHandler, Budgets.UpdateBudgetHandler>();
         services.AddScoped<Budgets.IDeleteBudgetHandler, Budgets.DeleteBudgetHandler>();
+        services.AddScoped<Statements.IGetStatementHandler, Statements.GetStatementHandler>();
         services.AddScoped<Goals.IListGoalsHandler, Goals.ListGoalsHandler>();
         services.AddScoped<Goals.IGetGoalHandler, Goals.GetGoalHandler>();
         services.AddScoped<Goals.ICreateGoalHandler, Goals.CreateGoalHandler>();
