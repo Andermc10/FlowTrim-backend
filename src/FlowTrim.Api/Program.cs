@@ -4,6 +4,7 @@ using FlowTrim.Api.Budgets;
 using FlowTrim.Api.Calendar;
 using FlowTrim.Api.Categories;
 using FlowTrim.Api.Dashboard;
+using FlowTrim.Api.Goals;
 using FlowTrim.Api.Cors;
 using FlowTrim.Api.Health;
 using FlowTrim.Api.Imports;
@@ -172,6 +173,7 @@ app.MapTransactionEndpoints();
 app.MapDashboardEndpoints();
 app.MapCalendarEndpoints();
 app.MapBudgetEndpoints();
+app.MapGoalEndpoints();
 
 app.Run();
 

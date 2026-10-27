@@ -1,6 +1,7 @@
 using FlowTrim.Domain.Accounts;
 using FlowTrim.Domain.Budgets;
 using FlowTrim.Domain.Categories;
+using FlowTrim.Domain.Goals;
 using FlowTrim.Domain.Subscriptions;
 using FlowTrim.Domain.Transactions;
 using FlowTrim.Domain.Usage;
@@ -21,6 +22,8 @@ public sealed class FlowTrimDbContext : DbContext
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Transaction> Transactions => Set<Transaction>();
     public DbSet<Budget> Budgets => Set<Budget>();
+    public DbSet<SavingsGoal> SavingsGoals => Set<SavingsGoal>();
+    public DbSet<GoalContribution> GoalContributions => Set<GoalContribution>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

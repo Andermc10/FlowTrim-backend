@@ -44,6 +44,8 @@ public sealed class FlowTrimApiFactory : WebApplicationFactory<Program>
 
     public InMemoryBudgetRepository Budgets { get; } = new();
 
+    public InMemoryGoalRepository Goals { get; } = new();
+
     /// <summary>Comparte la lista de movimientos con <see cref="Accounts"/>.</summary>
     public InMemoryCategoryRepository Categories => _categories ??= new() { Transactions = Accounts.Transactions };
 
@@ -90,6 +92,7 @@ public sealed class FlowTrimApiFactory : WebApplicationFactory<Program>
             services.AddSingleton<ICategoryRepository>(Categories);
             services.AddSingleton<ITransactionRepository>(Transactions);
             services.AddSingleton<FlowTrim.Application.Budgets.IBudgetRepository>(Budgets);
+            services.AddSingleton<FlowTrim.Application.Goals.IGoalRepository>(Goals);
             services.AddSingleton<IDatabaseHealthChecker, HealthyDatabaseChecker>();
         });
     }
