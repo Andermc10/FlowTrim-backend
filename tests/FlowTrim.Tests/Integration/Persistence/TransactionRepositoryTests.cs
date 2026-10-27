@@ -1,5 +1,6 @@
 using FlowTrim.Application.Transactions;
 using FlowTrim.Domain.Accounts;
+using FlowTrim.Domain.Calendar;
 using FlowTrim.Domain.Categories;
 using FlowTrim.Domain.Common;
 using FlowTrim.Domain.Transactions;
@@ -99,6 +100,42 @@ public sealed class TransactionRepositoryTests : IAsyncLifetime
         var exception = await Assert.ThrowsAsync<DomainValidationException>(() =>
             other.ServiceProvider.GetRequiredService<ITransactionRepository>().AddAsync(orphan, default));
         Assert.Equal("accountId", exception.PropertyName);
+    }
+
+    [Fact]
+    public async Task DailyTotals_GroupByDayAndAccountCurrency_WithoutTransfersOrOtherOwners()
+    {
+        // EP-14 HU-75: el calendario suma lo registrado por día y moneda en SQL.
+        var bank = Account.Create(OwnerA, "Bank", AccountType.Bank, "COP", 0m, Clock);
+        var cash = Account.Create(OwnerA, "Cash", AccountType.Cash, "COP", 0m, Clock);
+        var dollars = Account.Create(OwnerA, "Dollars", AccountType.Bank, "USD", 0m, Clock);
+        var food = Category.Create(OwnerA, "Food", CategoryKind.Expense, "orange", "food", Clock);
+        var salary = Category.Create(OwnerA, "Salary", CategoryKind.Income, "green", "salary", Clock);
+        var foreignBank = Account.Create(OwnerB, "Bank", AccountType.Bank, "COP", 0m, Clock);
+        var foreignFood = Category.Create(OwnerB, "Food", CategoryKind.Expense, "orange", "food", Clock);
+        await SeedAsync(
+            [bank, cash, dollars, foreignBank],
+            [food, salary, foreignFood],
+            [
+                Tx(OwnerA, TransactionType.Expense, bank, null, food, 100m, 10, 2, null),
+                Tx(OwnerA, TransactionType.Expense, cash, null, food, 50m, 10, 2, null),
+                Tx(OwnerA, TransactionType.Income, bank, null, salary, 1000m, 10, 2, null),
+                Tx(OwnerA, TransactionType.Expense, dollars, null, food, 7m, 10, 2, null),
+                Tx(OwnerA, TransactionType.Transfer, bank, cash, null, 30m, 10, 2, null),
+                Tx(OwnerA, TransactionType.Expense, bank, null, food, 9m, 9, 30, null),
+                Tx(OwnerB, TransactionType.Expense, foreignBank, null, foreignFood, 999m, 10, 2, null),
+            ]);
+
+        using var scope = _services.CreateScope();
+        var totals = await scope.ServiceProvider.GetRequiredService<ITransactionRepository>()
+            .GetDailyTotalsAsync(OwnerA, new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 31), default);
+
+        Assert.Equal(
+            [
+                new DailyTotals(new DateOnly(2026, 10, 2), "COP", 1000m, 150m),
+                new DailyTotals(new DateOnly(2026, 10, 2), "USD", 0m, 7m),
+            ],
+            totals);
     }
 
     private async Task SeedAsync(Account[] accounts, Category[] categories, Transaction[] transactions)
