@@ -11,6 +11,7 @@ using FlowTrim.Api.Imports;
 using FlowTrim.Api.Insights;
 using FlowTrim.Api.Observability;
 using FlowTrim.Api.Spending;
+using FlowTrim.Api.Statements;
 using FlowTrim.Api.Subscriptions;
 using FlowTrim.Api.Transactions;
 using FlowTrim.Application;
@@ -174,6 +175,7 @@ app.MapDashboardEndpoints();
 app.MapCalendarEndpoints();
 app.MapBudgetEndpoints();
 app.MapGoalEndpoints();
+app.MapStatementEndpoints();
 
 app.Run();
 
