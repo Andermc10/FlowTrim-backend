@@ -25,12 +25,16 @@ public static class RecurrenceSchedule
     /// Cobros esperados entre <paramref name="from"/> y <paramref name="to"/> (ambos incluidos), empezando en el próximo
     /// cobro y avanzando un ciclo cada vez. Los anteriores a <paramref name="from"/> se saltan, pero cuentan para el paso:
     /// para incluir los vencidos se pasa como <paramref name="from"/> la propia próxima fecha (o una anterior).
+    /// <paramref name="maxCount"/> limita los cobros contados desde la próxima fecha (cuotas restantes de un plan, HU-74).
     /// </summary>
-    public static IReadOnlyList<DateOnly> Occurrences(DateOnly nextDate, BillingCycle cycle, DateOnly from, DateOnly to)
+    public static IReadOnlyList<DateOnly> Occurrences(
+        DateOnly nextDate, BillingCycle cycle, DateOnly from, DateOnly to, int? maxCount = null)
     {
         var occurrences = new List<DateOnly>();
-        for (var date = nextDate; date <= to; date = Next(date, cycle))
+        var counted = 0;
+        for (var date = nextDate; date <= to && (maxCount is null || counted < maxCount); date = Next(date, cycle))
         {
+            counted++;
             if (date >= from)
             {
                 occurrences.Add(date);

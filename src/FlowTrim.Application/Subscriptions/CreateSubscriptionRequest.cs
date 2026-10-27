@@ -16,4 +16,6 @@ public sealed record CreateSubscriptionRequest(
     string? Kind = null,
     string? PaymentUrl = null,
     Guid? DefaultAccountId = null,
-    Guid? CategoryId = null);
+    Guid? CategoryId = null,
+    int? TotalInstalments = null,
+    int? PaidInstalments = null);

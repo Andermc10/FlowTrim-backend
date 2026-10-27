@@ -15,5 +15,7 @@ public sealed record SubscriptionResponse(
     Guid? DefaultAccountId,
     Guid? CategoryId,
     decimal MonthlyEquivalent,
+    int? TotalInstalments,
+    int PaidInstalments,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);

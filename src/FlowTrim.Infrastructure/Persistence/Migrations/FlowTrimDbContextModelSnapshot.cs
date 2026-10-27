@@ -204,6 +204,12 @@ namespace FlowTrim.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("owner_id");
 
+                    b.Property<int>("PaidInstalments")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("paid_instalments");
+
                     b.Property<string>("PaymentUrl")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
@@ -213,6 +219,10 @@ namespace FlowTrim.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("status");
+
+                    b.Property<int?>("TotalInstalments")
+                        .HasColumnType("integer")
+                        .HasColumnName("total_instalments");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamptz")
@@ -242,7 +252,9 @@ namespace FlowTrim.Infrastructure.Persistence.Migrations
 
                             t.HasCheckConstraint("ck_subscriptions_billing_cycle", "billing_cycle IN ('Monthly', 'Yearly', 'Weekly', 'Biweekly', 'Quarterly')");
 
-                            t.HasCheckConstraint("ck_subscriptions_kind", "kind IN ('Subscription', 'Bill')");
+                            t.HasCheckConstraint("ck_subscriptions_instalments", "((kind = 'Instalment') = (total_instalments IS NOT NULL)) AND paid_instalments >= 0 AND (total_instalments IS NULL OR (total_instalments BETWEEN 1 AND 600 AND paid_instalments <= total_instalments))");
+
+                            t.HasCheckConstraint("ck_subscriptions_kind", "kind IN ('Subscription', 'Bill', 'Instalment')");
 
                             t.HasCheckConstraint("ck_subscriptions_owner_id_not_empty", "owner_id <> ''");
 

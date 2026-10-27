@@ -48,6 +48,8 @@ internal static class SubscriptionRequestValidator
         string? paymentUrl,
         Guid? defaultAccountId,
         Guid? categoryId,
+        int? totalInstalments,
+        int? paidInstalments,
         SubscriptionKind currentKind,
         Subscription? current,
         string ownerId,
@@ -90,6 +92,7 @@ internal static class SubscriptionRequestValidator
             }
         }
 
-        return new RecurringPaymentDetails(parsedKind, paymentUrl, accountId, wantedCategoryId);
+        return new RecurringPaymentDetails(
+            parsedKind, paymentUrl, accountId, wantedCategoryId, totalInstalments, paidInstalments);
     }
 }

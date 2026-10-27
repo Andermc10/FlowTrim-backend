@@ -56,6 +56,7 @@ public sealed class SubscriptionCsvImportTests
 
     [Theory]
     [InlineData("Loan,https://example.com", "kind", ImportErrorCodes.InvalidKind)]
+    [InlineData("Instalment,", "kind", ImportErrorCodes.InvalidKind)]
     [InlineData("Bill,http://example.com", "payment_url", ImportErrorCodes.InvalidPaymentUrl)]
     [InlineData("Bill,https://user:pass@example.com", "payment_url", ImportErrorCodes.InvalidPaymentUrl)]
     public void Parse_InvalidKindOrPaymentUrl_ReportsFieldAndCode(string cells, string field, string code)
