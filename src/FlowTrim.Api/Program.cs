@@ -1,5 +1,6 @@
 using FlowTrim.Api.Accounts;
 using FlowTrim.Api.Authentication;
+using FlowTrim.Api.Calendar;
 using FlowTrim.Api.Categories;
 using FlowTrim.Api.Dashboard;
 using FlowTrim.Api.Cors;
@@ -168,6 +169,7 @@ app.MapAccountEndpoints();
 app.MapCategoryEndpoints();
 app.MapTransactionEndpoints();
 app.MapDashboardEndpoints();
+app.MapCalendarEndpoints();
 
 app.Run();
 

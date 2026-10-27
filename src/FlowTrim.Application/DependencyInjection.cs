@@ -18,6 +18,7 @@ public static class DependencyInjection
         services.AddScoped<IDeleteSubscriptionHandler, DeleteSubscriptionHandler>();
         services.AddScoped<IMarkSubscriptionPaidHandler, MarkSubscriptionPaidHandler>();
         services.AddScoped<IListSubscriptionPaymentsHandler, ListSubscriptionPaymentsHandler>();
+        services.AddScoped<Calendar.IGetCalendarHandler, Calendar.GetCalendarHandler>();
         services.AddScoped<IGetUpcomingChargesHandler, GetUpcomingChargesHandler>();
         services.AddScoped<Summaries.IGetSummaryHandler, Summaries.GetSummaryHandler>();
         services.AddScoped<Simulations.ISimulateHandler, Simulations.SimulateHandler>();

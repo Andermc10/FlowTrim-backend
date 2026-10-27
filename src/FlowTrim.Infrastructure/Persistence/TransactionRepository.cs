@@ -1,4 +1,5 @@
 using FlowTrim.Application.Transactions;
+using FlowTrim.Domain.Calendar;
 using FlowTrim.Domain.Common;
 using FlowTrim.Domain.Transactions;
 using Microsoft.EntityFrameworkCore;
@@ -69,6 +70,34 @@ internal sealed class TransactionRepository : ITransactionRepository
         return rows
             .OrderBy(row => row.Currency, StringComparer.Ordinal)
             .Select(row => new CurrencyTotals(row.Currency, row.Income, row.Expense, row.Income - row.Expense))
+            .ToList();
+    }
+
+    public async Task<IReadOnlyList<DailyTotals>> GetDailyTotalsAsync(
+        string ownerId, DateOnly start, DateOnly end, CancellationToken cancellationToken)
+    {
+        // Agrupado por día y moneda de la cuenta en SQL; las transferencias no son ingreso ni gasto.
+        var rows = await (
+                from transaction in _dbContext.Transactions
+                join account in _dbContext.Accounts on transaction.AccountId equals account.Id
+                where transaction.OwnerId == ownerId
+                    && transaction.Date >= start
+                    && transaction.Date <= end
+                    && transaction.Type != TransactionType.Transfer
+                group transaction by new { transaction.Date, account.Currency } into day
+                select new
+                {
+                    day.Key.Date,
+                    day.Key.Currency,
+                    Income = day.Sum(t => t.Type == TransactionType.Income ? t.Amount : 0m),
+                    Expense = day.Sum(t => t.Type == TransactionType.Expense ? t.Amount : 0m),
+                })
+            .ToListAsync(cancellationToken);
+
+        return rows
+            .OrderBy(row => row.Date)
+            .ThenBy(row => row.Currency, StringComparer.Ordinal)
+            .Select(row => new DailyTotals(row.Date, row.Currency, row.Income, row.Expense))
             .ToList();
     }
 

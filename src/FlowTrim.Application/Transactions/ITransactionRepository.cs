@@ -1,3 +1,4 @@
+using FlowTrim.Domain.Calendar;
 using FlowTrim.Domain.Transactions;
 
 namespace FlowTrim.Application.Transactions;
@@ -37,6 +38,13 @@ public interface ITransactionRepository
     /// <summary>Ingresos, gastos y neto por moneda de la cuenta para todo el filtro, sumados en la base de datos.</summary>
     Task<IReadOnlyList<CurrencyTotals>> GetTotalsAsync(
         string ownerId, TransactionFilter filter, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Ingresos y gastos por día y moneda de la cuenta entre dos fechas incluidas, sumados en la base de datos; las
+    /// transferencias no cuentan (calendario financiero, EP-14 HU-75).
+    /// </summary>
+    Task<IReadOnlyList<DailyTotals>> GetDailyTotalsAsync(
+        string ownerId, DateOnly from, DateOnly to, CancellationToken cancellationToken);
 
     /// <summary>Persiste los cambios de un movimiento existente.</summary>
     Task UpdateAsync(Transaction transaction, CancellationToken cancellationToken);

@@ -1,4 +1,5 @@
 using FlowTrim.Application.Transactions;
+using FlowTrim.Domain.Calendar;
 using FlowTrim.Domain.Transactions;
 
 namespace FlowTrim.Tests.Common;
@@ -59,6 +60,23 @@ public sealed class InMemoryTransactionRepository : ITransactionRepository
                 var expense = group.Where(t => t.Type == TransactionType.Expense).Sum(t => t.Amount);
                 return new CurrencyTotals(group.Key, income, expense, income - expense);
             })
+            .ToList();
+        return Task.FromResult(totals);
+    }
+
+    public Task<IReadOnlyList<DailyTotals>> GetDailyTotalsAsync(
+        string ownerId, DateOnly from, DateOnly to, CancellationToken cancellationToken)
+    {
+        IReadOnlyList<DailyTotals> totals = Filtered(ownerId, new TransactionFilter(from, to, null, null, null, null))
+            .Where(t => t.Type != TransactionType.Transfer)
+            .GroupBy(t => (t.Date, Currency: _accounts.Items.Single(a => a.Id == t.AccountId).Currency))
+            .OrderBy(group => group.Key.Date)
+            .ThenBy(group => group.Key.Currency, StringComparer.Ordinal)
+            .Select(group => new DailyTotals(
+                group.Key.Date,
+                group.Key.Currency,
+                group.Where(t => t.Type == TransactionType.Income).Sum(t => t.Amount),
+                group.Where(t => t.Type == TransactionType.Expense).Sum(t => t.Amount)))
             .ToList();
         return Task.FromResult(totals);
     }
