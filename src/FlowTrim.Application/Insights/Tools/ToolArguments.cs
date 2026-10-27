@@ -101,6 +101,23 @@ public sealed class ToolArguments
             .ToList();
     }
 
+    /// <summary>Texto opcional (recortado); vacío o ausente devuelve <c>null</c>.</summary>
+    public string? OptionalString(string name, int maxLength)
+    {
+        if (!TryGet(name, out var value))
+        {
+            return null;
+        }
+
+        if (value.ValueKind != JsonValueKind.String || value.GetString()!.Trim().Length > maxLength)
+        {
+            throw new ToolArgumentException($"{name} must be text up to {maxLength} characters.");
+        }
+
+        var text = value.GetString()!.Trim();
+        return text.Length == 0 ? null : text;
+    }
+
     public DateOnly? OptionalDate(string name)
     {
         if (!TryGet(name, out var value))

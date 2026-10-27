@@ -80,7 +80,7 @@ Every route except `/api/health` needs a bearer token (`401` without it, `403` i
 | Usage | `POST · GET /api/subscriptions/{id}/usage-records` · `GET /api/subscriptions/{id}/cost-per-use?from=&to=` |
 | Spending | `GET /api/summary` · `POST /api/simulations` · `GET /api/analytics?months=12` · `GET /api/reports/subscriptions.csv` |
 | Import | `POST /api/subscription-imports/preview` · `POST /api/subscription-imports/confirm` (multipart `file`) · `POST /api/transaction-imports/preview` · `POST /api/transaction-imports/confirm` (multipart `file` + `accountId`, `expenseCategoryId`, `incomeCategoryId`; bank CSV with `date`, signed `amount`, optional `description`, `category`) |
-| Insights | `POST /api/insights/questions` (5 per minute per user, 45 s budget) |
+| Insights | `POST /api/insights/questions` (5 per minute per user, 45 s budget) — allow-listed read-only tools: summary, analytics, upcoming charges, cancellation simulation, cost per use, **month spending, budgets and savings goals** (EP-16) |
 | Accounts | `GET · POST /api/accounts` (`?includeArchived=true`) · `GET · PUT · DELETE /api/accounts/{id}` — balance computed from transactions |
 | Categories | `GET · POST /api/categories` (`?kind=Expense|Income`, `?includeArchived=true`; the first list creates a default set in the `Accept-Language` language) · `PUT · DELETE /api/categories/{id}` |
 | Transactions | `GET · POST /api/transactions` (`?from=&to=&accountId=&categoryId=&type=&search=&page=&pageSize=`, totals per currency for the whole filter) · `GET · PUT · DELETE /api/transactions/{id}` — income, expense or same-currency transfer, dated today or earlier |

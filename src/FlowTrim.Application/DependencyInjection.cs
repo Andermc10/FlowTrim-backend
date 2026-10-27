@@ -65,6 +65,9 @@ public static class DependencyInjection
         services.AddScoped<IFinancialTool, UpcomingChargesTool>();
         services.AddScoped<IFinancialTool, SimulateCancellationTool>();
         services.AddScoped<IFinancialTool, CostPerUseTool>();
+        services.AddScoped<IFinancialTool, MonthSpendingTool>();
+        services.AddScoped<IFinancialTool, BudgetsTool>();
+        services.AddScoped<IFinancialTool, GoalsTool>();
         services.AddScoped<FinancialToolRegistry>();
         services.AddScoped<Insights.IAnswerQuestionHandler, Insights.AnswerQuestionHandler>();
         return services;

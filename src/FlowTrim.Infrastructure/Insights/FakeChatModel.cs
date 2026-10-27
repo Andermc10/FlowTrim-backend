@@ -11,11 +11,14 @@ public sealed class FakeChatModel : IChatModel
 {
     public const string ExplanationPrefix = "Here is what FlowTrim calculated: ";
     public const string OutOfScopeAnswer =
-        "I can only answer questions about your FlowTrim subscriptions, spending and upcoming charges.";
+        "I can only answer questions about your FlowTrim money: subscriptions, spending, budgets and goals.";
 
     // Palabra clave en la pregunta (inglés o español) → fragmento del nombre de la herramienta a pedir.
     private static readonly (string[] Keywords, string ToolFragment)[] Rules =
     [
+        (["budget", "presupuesto"], "budgets"),
+        (["goal", "meta", "ahorrar para", "saving for"], "goals"),
+        (["this month", "este mes", "income", "ingreso", "gasté", "gaste", "spent"], "month_spending"),
         (["cancel", "save", "saving", "cancelar", "ahorr"], "simulat"),
         (["upcoming", "next charge", "due", "próxim", "proxim", "cobro", "vence"], "upcoming"),
         (["category", "categor", "most expensive", "más car", "mas car", "top"], "analytics"),

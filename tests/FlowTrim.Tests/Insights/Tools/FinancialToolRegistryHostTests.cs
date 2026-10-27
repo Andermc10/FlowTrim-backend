@@ -41,7 +41,7 @@ public sealed class FinancialToolRegistryHostTests : IClassFixture<FlowTrimApiFa
 
         var result = await registry.ExecuteAsync(new ChatToolCall("call-1", "get_spending_summary", "{}"), default);
 
-        Assert.Equal(5, registry.Definitions.Count);
+        Assert.Equal(8, registry.Definitions.Count);
         using var json = JsonDocument.Parse(result.ToJson());
         var cop = Assert.Single(json.RootElement.GetProperty("data").GetProperty("currencies").EnumerateArray());
         Assert.Equal(38900m, cop.GetProperty("monthlyEquivalent").GetDecimal());
