@@ -1,5 +1,6 @@
 using FlowTrim.Application.Abstractions;
 using FlowTrim.Application.Accounts;
+using FlowTrim.Application.Budgets;
 using FlowTrim.Application.Categories;
 using FlowTrim.Application.Common;
 using FlowTrim.Application.Subscriptions;
@@ -28,6 +29,7 @@ public sealed class GetTodayDashboardHandler : IGetTodayDashboardHandler
     private readonly ICategoryRepository _categories;
     private readonly ITransactionRepository _transactions;
     private readonly ISubscriptionRepository _subscriptions;
+    private readonly IBudgetRepository _budgets;
     private readonly TimeProvider _timeProvider;
     private readonly ICurrentUser _currentUser;
 
@@ -36,6 +38,7 @@ public sealed class GetTodayDashboardHandler : IGetTodayDashboardHandler
         ICategoryRepository categories,
         ITransactionRepository transactions,
         ISubscriptionRepository subscriptions,
+        IBudgetRepository budgets,
         TimeProvider timeProvider,
         ICurrentUser currentUser)
     {
@@ -43,6 +46,7 @@ public sealed class GetTodayDashboardHandler : IGetTodayDashboardHandler
         _categories = categories;
         _transactions = transactions;
         _subscriptions = subscriptions;
+        _budgets = budgets;
         _timeProvider = timeProvider;
         _currentUser = currentUser;
     }
@@ -62,6 +66,7 @@ public sealed class GetTodayDashboardHandler : IGetTodayDashboardHandler
         var recent = await _transactions.ListAsync(ownerId, none, 0, RecentTransactionsCount, cancellationToken);
         var subscriptions = await _subscriptions.ListActiveAsync(ownerId, cancellationToken);
         var references = await TransactionRequestValidator.LoadReferencesAsync(_accounts, _categories, ownerId, cancellationToken);
+        var budgets = await BudgetOverview.BuildAsync(_budgets, _categories, _transactions, ownerId, monthStart, cancellationToken);
 
         var accountResponses = accounts
             .Select(account => AccountMapper.ToResponse(account, activity.GetValueOrDefault(account.Id)))
@@ -95,6 +100,7 @@ public sealed class GetTodayDashboardHandler : IGetTodayDashboardHandler
                 c.CommittedUntilMonthEnd, c.DaysLeft, c.SafeToSpendToday, c.Shortfall)).ToList(),
             accountResponses.Where(a => !a.IsArchived).ToList(),
             recent.Select(transaction => TransactionMapper.ToResponse(transaction, references)).ToList(),
-            charges);
+            charges,
+            BudgetOverview.ToWatch(budgets));
     }
 }

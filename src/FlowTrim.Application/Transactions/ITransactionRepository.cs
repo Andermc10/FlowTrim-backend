@@ -16,6 +16,9 @@ public sealed record TransactionFilter(
     string? Search,
     Guid? RecurringPaymentId = null);
 
+/// <summary>Gasto registrado de una categoría en una moneda de cuenta (presupuestos, EP-15 HU-76).</summary>
+public sealed record CategoryExpense(Guid CategoryId, string Currency, decimal Amount);
+
 /// <summary>Totales de una moneda para todo el filtro. Las transferencias nunca cuentan como ingreso ni gasto.</summary>
 public sealed record CurrencyTotals(string Currency, decimal Income, decimal Expense, decimal Net);
 
@@ -44,6 +47,10 @@ public interface ITransactionRepository
     /// transferencias no cuentan (calendario financiero, EP-14 HU-75).
     /// </summary>
     Task<IReadOnlyList<DailyTotals>> GetDailyTotalsAsync(
+        string ownerId, DateOnly from, DateOnly to, CancellationToken cancellationToken);
+
+    /// <summary>Σ gastos por categoría y moneda de la cuenta entre dos fechas incluidas, sumados en la base de datos.</summary>
+    Task<IReadOnlyList<CategoryExpense>> GetExpensesByCategoryAsync(
         string ownerId, DateOnly from, DateOnly to, CancellationToken cancellationToken);
 
     /// <summary>Persiste los cambios de un movimiento existente.</summary>

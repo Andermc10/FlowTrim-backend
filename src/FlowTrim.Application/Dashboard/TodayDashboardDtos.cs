@@ -1,4 +1,5 @@
 using FlowTrim.Application.Accounts;
+using FlowTrim.Application.Budgets;
 using FlowTrim.Application.Transactions;
 
 namespace FlowTrim.Application.Dashboard;
@@ -12,7 +13,8 @@ public sealed record TodayDashboardResponse(
     IReadOnlyList<CurrencyTodayResponse> Currencies,
     IReadOnlyList<AccountResponse> Accounts,
     IReadOnlyList<TransactionResponse> RecentTransactions,
-    IReadOnlyList<MonthChargeResponse> ChargesUntilMonthEnd);
+    IReadOnlyList<MonthChargeResponse> ChargesUntilMonthEnd,
+    IReadOnlyList<BudgetResponse> BudgetsToWatch);
 
 /// <summary>Cifras de una moneda. Nunca se suman monedas distintas.</summary>
 public sealed record CurrencyTodayResponse(

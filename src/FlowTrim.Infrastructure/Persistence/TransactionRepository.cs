@@ -101,6 +101,24 @@ internal sealed class TransactionRepository : ITransactionRepository
             .ToList();
     }
 
+    public async Task<IReadOnlyList<CategoryExpense>> GetExpensesByCategoryAsync(
+        string ownerId, DateOnly start, DateOnly end, CancellationToken cancellationToken)
+    {
+        // Solo gastos; la moneda es la de la cuenta (EP-15 D2).
+        var rows = await (
+                from transaction in _dbContext.Transactions
+                join account in _dbContext.Accounts on transaction.AccountId equals account.Id
+                where transaction.OwnerId == ownerId
+                    && transaction.Type == TransactionType.Expense
+                    && transaction.Date >= start
+                    && transaction.Date <= end
+                group transaction by new { CategoryId = transaction.CategoryId!.Value, account.Currency } into category
+                select new { category.Key.CategoryId, category.Key.Currency, Amount = category.Sum(t => t.Amount) })
+            .ToListAsync(cancellationToken);
+
+        return rows.Select(row => new CategoryExpense(row.CategoryId, row.Currency, row.Amount)).ToList();
+    }
+
     public async Task UpdateAsync(Transaction transaction, CancellationToken cancellationToken)
     {
         _dbContext.Transactions.Update(transaction);
