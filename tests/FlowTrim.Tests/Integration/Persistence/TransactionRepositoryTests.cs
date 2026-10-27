@@ -138,6 +138,42 @@ public sealed class TransactionRepositoryTests : IAsyncLifetime
             totals);
     }
 
+    [Fact]
+    public async Task AddImported_SeesExistingMovementsOfTheAccountAndRollsBackOnFailure()
+    {
+        // EP-16 HU-79: la selección recibe los movimientos de la cuenta en el rango; un fallo no deja nada creado.
+        var bank = Account.Create(OwnerA, "Bank", AccountType.Bank, "COP", 0m, Clock);
+        var cash = Account.Create(OwnerA, "Cash", AccountType.Cash, "COP", 0m, Clock);
+        var food = Category.Create(OwnerA, "Food", CategoryKind.Expense, "orange", "food", Clock);
+        await SeedAsync([bank, cash], [food],
+        [
+            Tx(OwnerA, TransactionType.Expense, bank, null, food, 10m, 10, 5, "Exito"),
+            Tx(OwnerA, TransactionType.Expense, cash, null, food, 10m, 10, 5, "Exito"),
+        ]);
+
+        using (var scope = _services.CreateScope())
+        {
+            var repository = scope.ServiceProvider.GetRequiredService<ITransactionRepository>();
+            IReadOnlyList<Transaction> seen = [];
+            await repository.AddImportedAsync(OwnerA, bank.Id, new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 31), existing =>
+            {
+                seen = existing;
+                return [Tx(OwnerA, TransactionType.Expense, bank, null, food, 20m, 10, 6, "Market")];
+            }, default);
+            Assert.Equal(["Exito"], seen.Select(t => t.Description));
+
+            await Assert.ThrowsAnyAsync<Exception>(() => repository.AddImportedAsync(
+                OwnerA, bank.Id, new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 31), _ =>
+                [
+                    Tx(OwnerA, TransactionType.Expense, bank, null, food, 30m, 10, 7, "Ok"),
+                    Transaction.Create(OwnerA, TransactionType.Expense, Guid.NewGuid(), null, food.Id, 40m, new DateOnly(2026, 10, 7), "Broken", null, Clock),
+                ], default));
+        }
+
+        await using var check = _database.CreateDbContext();
+        Assert.Equal(["Exito", "Exito", "Market"], check.Transactions.Select(t => t.Description).OrderBy(d => d).ToList());
+    }
+
     private async Task SeedAsync(Account[] accounts, Category[] categories, Transaction[] transactions)
     {
         await using var dbContext = _database.CreateDbContext();

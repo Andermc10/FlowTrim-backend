@@ -53,6 +53,23 @@ public interface ITransactionRepository
     Task<IReadOnlyList<CategoryExpense>> GetExpensesByCategoryAsync(
         string ownerId, DateOnly from, DateOnly to, CancellationToken cancellationToken);
 
+    /// <summary>Movimientos de la cuenta (como origen) entre dos fechas incluidas: base de los duplicados de una importación.</summary>
+    Task<IReadOnlyList<Transaction>> ListForImportAsync(
+        string ownerId, Guid accountId, DateOnly from, DateOnly to, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Importación atómica (EP-16 HU-79): en una sola transacción y en serie con otras importaciones del mismo propietario,
+    /// lee los movimientos de la cuenta en el rango, deja que <paramref name="selectNew"/> decida cuáles crear y los
+    /// inserta. Si algo falla no se crea ninguno.
+    /// </summary>
+    Task AddImportedAsync(
+        string ownerId,
+        Guid accountId,
+        DateOnly from,
+        DateOnly to,
+        Func<IReadOnlyList<Transaction>, IReadOnlyList<Transaction>> selectNew,
+        CancellationToken cancellationToken);
+
     /// <summary>Persiste los cambios de un movimiento existente.</summary>
     Task UpdateAsync(Transaction transaction, CancellationToken cancellationToken);
 

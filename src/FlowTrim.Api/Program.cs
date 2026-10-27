@@ -176,6 +176,7 @@ app.MapCalendarEndpoints();
 app.MapBudgetEndpoints();
 app.MapGoalEndpoints();
 app.MapStatementEndpoints();
+app.MapTransactionImportEndpoints();
 
 app.Run();
 

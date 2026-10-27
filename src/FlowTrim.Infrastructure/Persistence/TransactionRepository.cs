@@ -18,6 +18,9 @@ internal sealed class TransactionRepository : ITransactionRepository
         ["fk_transactions_categories_owner_id_category_id"] = ("categoryId", "Category not found."),
     };
 
+    // Espacio de nombres de la clave del bloqueo de importación, distinto del de las suscripciones.
+    private const string ImportLockPrefix = "transaction-import:";
+
     private readonly FlowTrimDbContext _dbContext;
 
     public TransactionRepository(FlowTrimDbContext dbContext) => _dbContext = dbContext;
@@ -117,6 +120,33 @@ internal sealed class TransactionRepository : ITransactionRepository
             .ToListAsync(cancellationToken);
 
         return rows.Select(row => new CategoryExpense(row.CategoryId, row.Currency, row.Amount)).ToList();
+    }
+
+    public async Task<IReadOnlyList<Transaction>> ListForImportAsync(
+        string ownerId, Guid accountId, DateOnly start, DateOnly end, CancellationToken cancellationToken) =>
+        await _dbContext.Transactions
+            .Where(t => t.OwnerId == ownerId && t.AccountId == accountId && t.Date >= start && t.Date <= end)
+            .ToListAsync(cancellationToken);
+
+    public async Task AddImportedAsync(
+        string ownerId,
+        Guid accountId,
+        DateOnly start,
+        DateOnly end,
+        Func<IReadOnlyList<Transaction>, IReadOnlyList<Transaction>> selectNew,
+        CancellationToken cancellationToken)
+    {
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+        // Bloqueo consultivo por propietario hasta confirmar o revertir: dos confirmaciones del mismo archivo se ejecutan
+        // una tras otra y la segunda ve lo creado por la primera (todo duplicado).
+        await _dbContext.Database.ExecuteSqlAsync(
+            $"SELECT pg_advisory_xact_lock(hashtextextended({ImportLockPrefix + ownerId}, 0))", cancellationToken);
+
+        var existing = await ListForImportAsync(ownerId, accountId, start, end, cancellationToken);
+        _dbContext.Transactions.AddRange(selectNew(existing));
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
     }
 
     public async Task UpdateAsync(Transaction transaction, CancellationToken cancellationToken)
