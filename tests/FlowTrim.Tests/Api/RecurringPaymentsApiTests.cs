@@ -64,7 +64,7 @@ public sealed class RecurringPaymentsApiTests : IClassFixture<FlowTrimApiFactory
     }
 
     [Theory]
-    [InlineData("Instalment", "kind")]
+    [InlineData("Loan", "kind")]
     [InlineData("Daily", "billingCycle")]
     public async Task Create_UnknownKindOrCycle_Returns400OnTheField(string value, string field)
     {

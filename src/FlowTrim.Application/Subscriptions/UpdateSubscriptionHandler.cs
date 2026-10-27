@@ -55,7 +55,8 @@ public sealed class UpdateSubscriptionHandler : IUpdateSubscriptionHandler
         var notBefore = request.NextBillingDate != subscription.NextBillingDate ? ProductCalendar.Today(_timeProvider) : (DateOnly?)null;
         SubscriptionRequestValidator.RequireNextBillingDate(request.NextBillingDate, notBefore, errors);
         var details = await SubscriptionRequestValidator.ParseDetailsAsync(
-            request.Kind, request.PaymentUrl, request.DefaultAccountId, request.CategoryId, subscription.Kind,
+            request.Kind, request.PaymentUrl, request.DefaultAccountId, request.CategoryId,
+            request.TotalInstalments, null, subscription.Kind,
             subscription, ownerId, _accounts, _categories, errors, cancellationToken);
 
         if (errors.Count > 0)

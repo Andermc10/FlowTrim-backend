@@ -58,6 +58,23 @@ public sealed class RecurringPaymentSchemaTests : IAsyncLifetime
         Assert.Equal(["1"], await QueryAsync("SELECT count(*)::text FROM subscriptions"));
     }
 
+    [Theory]
+    [InlineData("'Instalment'", "NULL", "0")]
+    [InlineData("'Bill'", "3", "0")]
+    [InlineData("'Instalment'", "3", "4")]
+    [InlineData("'Instalment'", "601", "0")]
+    public async Task Insert_InvalidInstalmentCounts_AreRejectedByCheckConstraint(string kind, string total, string paid)
+    {
+        // EP-14 HU-74: plan si y solo si hay total; pagadas entre 0 y el total; total entre 1 y 600.
+        var exception = await Assert.ThrowsAsync<PostgresException>(() => ExecuteAsync(
+            "INSERT INTO subscriptions (id, owner_id, name, amount, currency, billing_cycle, next_billing_date, status, kind, " +
+            "total_instalments, paid_instalments, created_at, updated_at) " +
+            $"VALUES (gen_random_uuid(), '{OwnerA}', 'Laptop', 100, 'COP', 'Monthly', DATE '2026-10-20', 'Active', {kind}, " +
+            $"{total}, {paid}, now(), now())"));
+
+        Assert.Equal("ck_subscriptions_instalments", exception.ConstraintName);
+    }
+
     [Fact]
     public async Task Insert_UnknownKind_IsRejectedByCheckConstraint()
     {

@@ -19,6 +19,8 @@ internal static class SubscriptionMapper
         subscription.DefaultAccountId,
         subscription.CategoryId,
         subscription.GetMonthlyEquivalent(),
+        subscription.TotalInstalments,
+        subscription.PaidInstalments,
         subscription.CreatedAt,
         subscription.UpdatedAt);
 }

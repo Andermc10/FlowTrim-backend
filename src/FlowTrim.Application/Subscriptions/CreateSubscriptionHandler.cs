@@ -51,7 +51,8 @@ public sealed class CreateSubscriptionHandler : ICreateSubscriptionHandler
         SubscriptionRequestValidator.RequireNextBillingDate(
             request.NextBillingDate, ProductCalendar.Today(_timeProvider), errors);
         var details = await SubscriptionRequestValidator.ParseDetailsAsync(
-            request.Kind, request.PaymentUrl, request.DefaultAccountId, request.CategoryId, SubscriptionKind.Subscription,
+            request.Kind, request.PaymentUrl, request.DefaultAccountId, request.CategoryId,
+            request.TotalInstalments, request.PaidInstalments, SubscriptionKind.Subscription,
             current: null, ownerId, _accounts, _categories, errors, cancellationToken);
 
         if (errors.Count > 0)

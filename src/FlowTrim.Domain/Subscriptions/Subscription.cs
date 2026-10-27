@@ -24,6 +24,9 @@ public sealed class Subscription
     /// <summary>Longitud máxima del enlace de pago (EP-14 D9).</summary>
     public const int PaymentUrlMaxLength = 500;
 
+    /// <summary>Número máximo de cuotas de un plan (EP-14 D8).</summary>
+    public const int MaxInstalments = 600;
+
     public Guid Id { get; private set; }
     public string OwnerId { get; private set; } = null!;
     public string Name { get; private set; } = null!;
@@ -37,6 +40,12 @@ public sealed class Subscription
     public string? PaymentUrl { get; private set; }
     public Guid? DefaultAccountId { get; private set; }
     public Guid? CategoryId { get; private set; }
+
+    /// <summary>Cuotas del plan (solo <see cref="SubscriptionKind.Instalment"/>; nulo en los demás).</summary>
+    public int? TotalInstalments { get; private set; }
+
+    /// <summary>Cuotas ya pagadas: cada "marcar como pagado" suma una (0 fuera de los planes de cuotas).</summary>
+    public int PaidInstalments { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
 
@@ -106,7 +115,7 @@ public sealed class Subscription
 
         var (validName, validCategory, validAmount, validCurrency) =
             ValidateAndNormalize(name, category, amount, currency, billingCycle);
-        var validDetails = ValidateDetails(details ?? RecurringPaymentDetails.Default);
+        var validDetails = ValidateDetails(details ?? RecurringPaymentDetails.Default, currentPaid: null);
 
         var now = timeProvider.GetUtcNow();
         return new Subscription(
@@ -148,7 +157,17 @@ public sealed class Subscription
             throw new DomainValidationException("status", "Status is not supported.");
         }
 
-        var validDetails = details is null ? null : ValidateDetails(details);
+        var validDetails = details is null ? null : ValidateDetails(details, PaidInstalments);
+        var (kind, total, paid) = validDetails is null
+            ? (Kind, TotalInstalments, PaidInstalments)
+            : (validDetails.Kind, validDetails.TotalInstalments, validDetails.PaidInstalments ?? 0);
+
+        // Un plan con todas sus cuotas pagadas no vuelve a cobrar: reactivarlo exige ampliar el número de cuotas.
+        if (kind == SubscriptionKind.Instalment && status == SubscriptionStatus.Active && paid >= total)
+        {
+            throw new DomainValidationException(
+                "status", "This instalment plan is completed. Raise the number of instalments to reactivate it.");
+        }
 
         Name = validName;
         Category = validCategory;
@@ -168,7 +187,8 @@ public sealed class Subscription
     /// <summary>
     /// Marca el cobro actual como pagado: la próxima fecha avanza exactamente un ciclo desde la actual con la regla de
     /// <see cref="RecurrenceSchedule.Next"/> (nunca desde hoy: los ciclos saltados siguen vencidos). No registra ningún
-    /// pago (HU-57).
+    /// pago (HU-57). En un plan de cuotas suma una cuota pagada y, con la última, el plan queda completado: pasa a
+    /// <see cref="SubscriptionStatus.Inactive"/> y deja de contar en todos los cobros esperados (HU-74).
     /// </summary>
     public void AdvanceBillingDate(TimeProvider timeProvider)
     {
@@ -178,8 +198,23 @@ public sealed class Subscription
         }
 
         NextBillingDate = RecurrenceSchedule.Next(NextBillingDate, BillingCycle);
+        if (Kind == SubscriptionKind.Instalment)
+        {
+            PaidInstalments++;
+            if (IsCompleted)
+            {
+                Status = SubscriptionStatus.Inactive;
+            }
+        }
+
         UpdatedAt = timeProvider.GetUtcNow();
     }
+
+    /// <summary>Verdadero si es un plan de cuotas con todas sus cuotas pagadas.</summary>
+    public bool IsCompleted => Kind == SubscriptionKind.Instalment && PaidInstalments >= TotalInstalments;
+
+    /// <summary>Cuotas que faltan por pagar en un plan de cuotas; nulo en los demás pagos.</summary>
+    public int? RemainingInstalments => Kind == SubscriptionKind.Instalment ? TotalInstalments - PaidInstalments : null;
 
     // Valida y normaliza los campos comunes a creación y actualización. Lanza ante la primera invariante
     // incumplida. Devuelve los valores ya normalizados (nombre recortado, importe redondeado, moneda en mayúsculas).
@@ -247,9 +282,12 @@ public sealed class Subscription
     /// </summary>
     public decimal GetMonthlyEquivalent() => RecurrenceSchedule.MonthlyEquivalent(Amount, BillingCycle);
 
-    /// <summary>Cobros esperados entre dos fechas incluidas (<see cref="RecurrenceSchedule.Occurrences"/>).</summary>
+    /// <summary>
+    /// Cobros esperados entre dos fechas incluidas (<see cref="RecurrenceSchedule.Occurrences"/>); un plan de cuotas
+    /// nunca proyecta más que sus cuotas restantes (HU-74).
+    /// </summary>
     public IReadOnlyList<DateOnly> GetOccurrences(DateOnly from, DateOnly to) =>
-        RecurrenceSchedule.Occurrences(NextBillingDate, BillingCycle, from, to);
+        RecurrenceSchedule.Occurrences(NextBillingDate, BillingCycle, from, to, RemainingInstalments);
 
     /// <summary>
     /// Días enteros hasta el próximo cobro respecto a <paramref name="referenceDate"/>.
@@ -279,8 +317,10 @@ public sealed class Subscription
         && uri.Host.Length > 0
         && uri.UserInfo.Length == 0;
 
-    // Valida y normaliza los datos de pago recurrente: tipo definido y enlace https (vacío cuenta como ausente).
-    private static RecurringPaymentDetails ValidateDetails(RecurringPaymentDetails details)
+    // Valida y normaliza los datos de pago recurrente: tipo definido, enlace https (vacío cuenta como ausente) y, en un
+    // plan de cuotas, total entre 1 y 600 y cuotas pagadas válidas. Al crear (currentPaid nulo) las pagadas pueden venir
+    // en los datos (plan ya empezado, menos que el total); al editar se conservan las que ya lleva el plan.
+    private static RecurringPaymentDetails ValidateDetails(RecurringPaymentDetails details, int? currentPaid)
     {
         if (!Enum.IsDefined(details.Kind))
         {
@@ -297,7 +337,31 @@ public sealed class Subscription
             throw new DomainValidationException("paymentUrl", PaymentUrlMessage);
         }
 
-        return details with { PaymentUrl = paymentUrl };
+        if (details.Kind != SubscriptionKind.Instalment)
+        {
+            return details with { PaymentUrl = paymentUrl, TotalInstalments = null, PaidInstalments = 0 };
+        }
+
+        if (details.TotalInstalments is not { } total || total < 1 || total > MaxInstalments)
+        {
+            throw new DomainValidationException(
+                "totalInstalments", $"An instalment plan needs between 1 and {MaxInstalments} instalments.");
+        }
+
+        var paid = currentPaid ?? details.PaidInstalments ?? 0;
+        if (currentPaid is null && (paid < 0 || paid >= total))
+        {
+            throw new DomainValidationException(
+                "paidInstalments", "Instalments already paid must be zero or more and fewer than the total.");
+        }
+
+        if (currentPaid is not null && total < paid)
+        {
+            throw new DomainValidationException(
+                "totalInstalments", $"The plan already has {paid} paid instalments; the total cannot be lower.");
+        }
+
+        return details with { PaymentUrl = paymentUrl, TotalInstalments = total, PaidInstalments = paid };
     }
 
     /// <summary>Mensaje del enlace de pago inválido, compartido con la importación CSV.</summary>
@@ -310,6 +374,8 @@ public sealed class Subscription
         PaymentUrl = details.PaymentUrl;
         DefaultAccountId = details.DefaultAccountId;
         CategoryId = details.CategoryId;
+        TotalInstalments = details.TotalInstalments;
+        PaidInstalments = details.PaidInstalments ?? 0;
     }
 
     /// <summary>

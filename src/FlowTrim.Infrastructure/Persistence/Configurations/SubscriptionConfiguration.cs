@@ -23,7 +23,12 @@ internal sealed class SubscriptionConfiguration : IEntityTypeConfiguration<Subsc
             table.HasCheckConstraint(
                 "ck_subscriptions_billing_cycle",
                 "billing_cycle IN ('Monthly', 'Yearly', 'Weekly', 'Biweekly', 'Quarterly')");
-            table.HasCheckConstraint("ck_subscriptions_kind", "kind IN ('Subscription', 'Bill')");
+            table.HasCheckConstraint("ck_subscriptions_kind", "kind IN ('Subscription', 'Bill', 'Instalment')");
+            // Plan de cuotas ⇔ total de cuotas; las pagadas entre 0 y el total (EP-14 HU-74).
+            table.HasCheckConstraint(
+                "ck_subscriptions_instalments",
+                "((kind = 'Instalment') = (total_instalments IS NOT NULL)) AND paid_instalments >= 0 AND " +
+                "(total_instalments IS NULL OR (total_instalments BETWEEN 1 AND 600 AND paid_instalments <= total_instalments))");
             table.HasCheckConstraint("ck_subscriptions_status", "status IN ('Active', 'Inactive')");
         });
 
@@ -56,6 +61,8 @@ internal sealed class SubscriptionConfiguration : IEntityTypeConfiguration<Subsc
         builder.Property(s => s.PaymentUrl).HasMaxLength(Subscription.PaymentUrlMaxLength);
         builder.Property(s => s.DefaultAccountId).HasColumnType("uuid");
         builder.Property(s => s.CategoryId).HasColumnType("uuid");
+        builder.Property(s => s.TotalInstalments);
+        builder.Property(s => s.PaidInstalments).HasDefaultValue(0).IsRequired();
 
         builder.Property(s => s.NextBillingDate).HasColumnType("date").IsRequired();
         builder.Property(s => s.CreatedAt).HasColumnType("timestamptz").IsRequired();

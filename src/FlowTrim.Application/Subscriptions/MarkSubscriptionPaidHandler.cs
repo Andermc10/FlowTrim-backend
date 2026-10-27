@@ -16,7 +16,7 @@ public sealed record MarkPaidRequest(Guid? AccountId, decimal? Amount, DateOnly?
 
 /// <summary>
 /// Resultado de marcar como pagado: el pago con su nueva fecha, el gasto registrado (nulo si solo se movió la fecha) y si
-/// el pago quedó completado (planes de cuotas, HU-74; hasta entonces siempre falso).
+/// este pago completó un plan de cuotas (HU-74): entonces el plan queda inactivo.
 /// </summary>
 public sealed record MarkPaidResponse(SubscriptionResponse Subscription, TransactionResponse? Transaction, bool Completed);
 
@@ -66,7 +66,7 @@ public sealed class MarkSubscriptionPaidHandler : IMarkSubscriptionPaidHandler
             subscription.AdvanceBillingDate(_timeProvider);
             await _repository.UpdateAsync(subscription, cancellationToken);
             return HandlerResult<MarkPaidResponse>.Success(
-                new MarkPaidResponse(SubscriptionMapper.ToResponse(subscription), null, false));
+                new MarkPaidResponse(SubscriptionMapper.ToResponse(subscription), null, subscription.IsCompleted));
         }
 
         // El gasto pasa por las mismas reglas que un movimiento creado a mano (cuenta y categoría del propietario y no
@@ -117,6 +117,6 @@ public sealed class MarkSubscriptionPaidHandler : IMarkSubscriptionPaidHandler
         await _repository.RecordPaymentAsync(subscription, payment, cancellationToken);
 
         return HandlerResult<MarkPaidResponse>.Success(new MarkPaidResponse(
-            SubscriptionMapper.ToResponse(subscription), TransactionMapper.ToResponse(payment, references), false));
+            SubscriptionMapper.ToResponse(subscription), TransactionMapper.ToResponse(payment, references), subscription.IsCompleted));
     }
 }

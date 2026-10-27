@@ -134,6 +134,12 @@ public static partial class SubscriptionCsvImport
             ImportErrorCodes.InvalidStatus, "Use Active or Inactive.", required: false, errors) ?? SubscriptionStatus.Active;
         var kind = Enumeration<SubscriptionKind>(Cell(SubscriptionCsvFormat.Kind), SubscriptionCsvFormat.Kind,
             ImportErrorCodes.InvalidKind, "Use Subscription or Bill.", required: false, errors) ?? SubscriptionKind.Subscription;
+        if (kind == SubscriptionKind.Instalment)
+        {
+            // El archivo no lleva el número de cuotas (EP-14 HU-72 FR-4): un plan de cuotas se crea en la aplicación.
+            errors.Add(new ImportError(SubscriptionCsvFormat.Kind, ImportErrorCodes.InvalidKind,
+                "Instalment plans cannot be imported. Create them in FlowTrim."));
+        }
         var paymentUrl = PaymentUrl(Cell(SubscriptionCsvFormat.PaymentUrl), errors);
 
         if (errors.Count > 0)
