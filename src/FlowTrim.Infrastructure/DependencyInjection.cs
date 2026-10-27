@@ -34,6 +34,7 @@ public static class DependencyInjection
         services.AddScoped<FlowTrim.Application.Categories.ICategoryRepository, CategoryRepository>();
         services.AddScoped<FlowTrim.Application.Transactions.ITransactionRepository, TransactionRepository>();
         services.AddScoped<FlowTrim.Application.Budgets.IBudgetRepository, BudgetRepository>();
+        services.AddScoped<FlowTrim.Application.Goals.IGoalRepository, GoalRepository>();
         return services;
     }
 

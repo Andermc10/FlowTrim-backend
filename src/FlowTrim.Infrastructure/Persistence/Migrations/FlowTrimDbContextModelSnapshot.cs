@@ -190,6 +190,108 @@ namespace FlowTrim.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("FlowTrim.Domain.Goals.GoalContribution", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date")
+                        .HasColumnName("date");
+
+                    b.Property<Guid>("GoalId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("goal_id");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("note");
+
+                    b.Property<string>("OwnerId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("owner_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_goal_contributions");
+
+                    b.HasIndex("OwnerId", "GoalId", "Date")
+                        .HasDatabaseName("ix_goal_contributions_owner_id_goal_id_date");
+
+                    b.ToTable("goal_contributions", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_goal_contributions_amount_not_zero", "amount <> 0");
+
+                            t.HasCheckConstraint("ck_goal_contributions_owner_id_not_empty", "owner_id <> ''");
+                        });
+                });
+
+            modelBuilder.Entity("FlowTrim.Domain.Goals.SavingsGoal", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasColumnType("char(3)")
+                        .HasColumnName("currency");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("OwnerId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("owner_id");
+
+                    b.Property<decimal>("Target")
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("target_amount");
+
+                    b.Property<DateOnly?>("TargetDate")
+                        .HasColumnType("date")
+                        .HasColumnName("target_date");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_savings_goals");
+
+                    b.HasAlternateKey("OwnerId", "Id")
+                        .HasName("ux_savings_goals_owner_id_id");
+
+                    b.ToTable("savings_goals", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_savings_goals_owner_id_not_empty", "owner_id <> ''");
+
+                            t.HasCheckConstraint("ck_savings_goals_target_positive", "target_amount > 0");
+                        });
+                });
+
             modelBuilder.Entity("FlowTrim.Domain.Subscriptions.Subscription", b =>
                 {
                     b.Property<Guid>("Id")
@@ -449,6 +551,17 @@ namespace FlowTrim.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_budgets_categories_owner_id_category_id");
+                });
+
+            modelBuilder.Entity("FlowTrim.Domain.Goals.GoalContribution", b =>
+                {
+                    b.HasOne("FlowTrim.Domain.Goals.SavingsGoal", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId", "GoalId")
+                        .HasPrincipalKey("OwnerId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_goal_contributions_savings_goals_owner_id_goal_id");
                 });
 
             modelBuilder.Entity("FlowTrim.Domain.Transactions.Transaction", b =>
