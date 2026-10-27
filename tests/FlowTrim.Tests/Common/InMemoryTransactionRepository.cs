@@ -91,6 +91,21 @@ public sealed class InMemoryTransactionRepository : ITransactionRepository
         return Task.FromResult(expenses);
     }
 
+    public Task<IReadOnlyList<Transaction>> ListForImportAsync(
+        string ownerId, Guid accountId, DateOnly from, DateOnly to, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<Transaction>>(_accounts.Transactions
+            .Where(t => t.OwnerId == ownerId && t.AccountId == accountId && t.Date >= from && t.Date <= to)
+            .ToList());
+
+    public async Task AddImportedAsync(
+        string ownerId,
+        Guid accountId,
+        DateOnly from,
+        DateOnly to,
+        Func<IReadOnlyList<Transaction>, IReadOnlyList<Transaction>> selectNew,
+        CancellationToken cancellationToken) =>
+        _accounts.Transactions.AddRange(selectNew(await ListForImportAsync(ownerId, accountId, from, to, cancellationToken)));
+
     public Task UpdateAsync(Transaction transaction, CancellationToken cancellationToken) => Task.CompletedTask;
 
     public Task<bool> DeleteAsync(string ownerId, Guid id, CancellationToken cancellationToken) =>
