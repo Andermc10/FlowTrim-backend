@@ -30,4 +30,12 @@ public static class InsightFigureKinds
     public const string PeriodCost = "period_cost";
     public const string DeclaredUses = "declared_uses";
     public const string CostPerUse = "cost_per_use";
+    public const string MonthIncome = "month_income";
+    public const string MonthExpense = "month_expense";
+    public const string MonthNet = "month_net";
+    public const string BudgetSpent = "budget_spent";
+    public const string BudgetRemaining = "budget_remaining";
+    public const string GoalSaved = "goal_saved";
+    public const string GoalRemaining = "goal_remaining";
+    public const string GoalRequiredPerMonth = "goal_required_per_month";
 }

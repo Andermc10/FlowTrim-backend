@@ -23,6 +23,8 @@ public static class ToolAssumptions
     public const string NoConversion = "Each currency is reported separately; currencies are never combined or converted.";
     public const string DeclaredUsage = "Usage is declared by the user, not verified.";
     public const string NothingCancelled = "The simulation does not cancel anything and savings are not guaranteed.";
+    public const string RecordedOnly = "Amounts are transactions the user recorded; expected charges are not included.";
+    public const string DeclaredContributions = "Goal contributions are declared by the user and projections are estimates.";
 
     /// <summary>Clave usada cuando un texto no tiene clave registrada; la UI muestra entonces el texto en inglés.</summary>
     public const string OtherKey = "other";
@@ -36,6 +38,8 @@ public static class ToolAssumptions
         [NoConversion] = "no_conversion",
         [DeclaredUsage] = "declared_usage",
         [NothingCancelled] = "nothing_cancelled",
+        [RecordedOnly] = "recorded_only",
+        [DeclaredContributions] = "declared_contributions",
     };
 
     public static string KeyOf(string assumption) => Keys.GetValueOrDefault(assumption, OtherKey);
