@@ -175,19 +175,24 @@ public sealed class InsightsApiTests : IClassFixture<FlowTrimApiFactory>
     public async Task Question_CancelledByClient_IsNotLoggedAsServerError()
     {
         var logs = new LogCapture();
+        var model = new HangingChatModel();
         using var factory = _factory.WithWebHostBuilder(builder =>
         {
             builder.ConfigureLogging(logging => logging.AddProvider(logs));
-            builder.ConfigureTestServices(services => services.AddSingleton<IChatModel>(new HangingChatModel()));
+            builder.ConfigureTestServices(services => services.AddSingleton<IChatModel>(model));
         });
-        using var abort = new CancellationTokenSource(TimeSpan.FromMilliseconds(300));
+        using var abort = new CancellationTokenSource();
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            factory.CreateClientFor(NewOwner()).PostAsJsonAsync(Route, new { question = "How much do I spend?" }, abort.Token));
+        var request = factory.CreateClientFor(NewOwner()).PostAsJsonAsync(Route, new { question = "How much do I spend?" }, abort.Token);
+        // Cancela solo cuando el servidor ya espera al modelo: con un tiempo fijo, un runner lento cancelaba antes de
+        // que la petición llegara y nunca se registraba el 499.
+        await model.Started.Task.WaitAsync(TimeSpan.FromSeconds(30));
+        abort.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => request);
 
         // El servidor termina la petición después de que el cliente se va: se espera su línea de log. El middleware de
         // excepciones de ASP.NET Core responde 499 sin pasar por GlobalExceptionHandler (no es un 500).
-        var deadline = DateTime.UtcNow.AddSeconds(5);
+        var deadline = DateTime.UtcNow.AddSeconds(10);
         while (!logs.Entries.Any(e => e.Message.Contains("responded 499")) && DateTime.UtcNow < deadline)
         {
             await Task.Delay(50);
@@ -299,8 +304,12 @@ public sealed class InsightsApiTests : IClassFixture<FlowTrimApiFactory>
     /// <summary>Modelo que nunca responde hasta que se cancela: simula un proveedor colgado.</summary>
     private sealed class HangingChatModel : IChatModel
     {
+        // Se completa cuando la petición llega al modelo.
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
         public async Task<ChatCompletion> CompleteAsync(ChatRequest request, CancellationToken cancellationToken)
         {
+            Started.TrySetResult();
             await Task.Delay(Timeout.Infinite, cancellationToken);
             throw new InvalidOperationException("Unreachable.");
         }
