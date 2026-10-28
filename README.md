@@ -2,12 +2,12 @@
 
 # FlowTrim API
 
-**The deterministic engine behind FlowTrim: every recurring charge, its real monthly cost and what you would save by cutting it.**
+**The deterministic engine behind FlowTrim: your daily money, every recurring payment, budgets and goals, with every number explained.**
 
 [![Backend CI](https://github.com/Andermc10/FlowTrim-backend/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Andermc10/FlowTrim-backend/actions/workflows/ci.yml)
 ![.NET 10](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet&logoColor=white)
 ![PostgreSQL 17](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-605%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-766%20passing-2ea44f)
 ![Auth](https://img.shields.io/badge/auth-OIDC%20%2F%20JWT-EB5424?logo=auth0&logoColor=white)
 
 [Frontend](https://github.com/Andermc10/FlowTrim-frontend) · [Specs & backlog](https://github.com/Andermc10/FlowTrim-tracker) · [Operations runbook](https://github.com/Andermc10/FlowTrim-tracker/blob/main/docs/OPERATIONS.md)
@@ -20,19 +20,21 @@
 
 | | |
 |---|---|
-| **Numbers you can audit** | Monthly equivalents, projections, savings and cost per use come from pure, unit-tested C# formulas. Currencies are never summed or converted. |
-| **Honest by design** | Expected charges are never presented as payments, declared usage is never "verified", the simulator cancels nothing and always returns its assumptions. |
+| **Numbers you can audit** | Balances, safe to spend today, monthly equivalents, budgets, goal estimates, statements and savings come from pure, unit-tested C# formulas. Currencies are never summed or converted. |
+| **Honest by design** | Expected charges are never presented as payments (a payment exists only when the user records it), declared usage and goal contributions are never "verified", the simulator cancels nothing and always returns its assumptions. |
 | **Private per user** | Every query is filtered by the token's `sub` on the server. Another user's data answers `404`, exactly like a missing id. |
-| **AI that cannot invent figures** | Insights lets a model call five read-only tools; the figures in the response are built by the backend, never parsed from the model's text. |
+| **AI that cannot invent figures** | Insights lets a model call eight read-only tools; the figures in the response are built by the backend, never parsed from the model's text. |
 
 FlowTrim is a **manual-data** portfolio project: it does not connect to banks, detect charges or cancel anything.
 
 ## Features
 
-- **Subscriptions** — CRUD with paging, server-side countdown and alert windows (overdue · today · ≤3 · ≤7 · later).
-- **Spending** — per-currency summary, analytics (by category, top 5, expected charges per month) and a cancellation simulator at 1/12/24 months.
+- **Daily finance** — accounts with computed balances, expense/income categories, income/expense/transfer transactions and a "safe to spend today" estimate per currency.
+- **Recurring payments** — subscriptions, bills and instalment plans (weekly to yearly) with paging, countdown and alert windows (overdue · today · ≤3 · ≤7 · later); mark as paid records the expense in an account; month calendar of expected vs recorded.
+- **Budgets and goals** — monthly limit per expense category (warning at 80 %, exceeded at 100 %) and savings goals with declared contributions and estimates.
+- **Spending** — per-currency summary, analytics (by category, top 5, expected charges per month), a monthly statement against the previous month and a cancellation simulator at 1/12/24 months.
 - **Usage** — declared usage records and cost per use that never divides by zero.
-- **CSV in and out** — export (RFC 4180, formula-injection guard) and a two-step import: preview with per-row errors and duplicates, then an atomic confirmation.
+- **CSV in and out** — export (RFC 4180, formula-injection guard) and two-step imports of recurring payments and bank statements: preview with per-row errors and duplicates, then an atomic confirmation.
 - **Insights** — short questions about your own data answered from deterministic tools (Groq free tier or an offline fake).
 - **Operations** — health check, RFC 7807 errors with a correlation id, JSON logs without personal data, validated configuration that fails fast.
 
@@ -124,7 +126,7 @@ Outside Development the API enables HTTPS redirection and HSTS, writes JSON logs
 ## Tests
 
 ```bash
-dotnet test FlowTrim.slnx                                    # 605 tests (needs Docker for the PostgreSQL ones)
+dotnet test FlowTrim.slnx                                    # 766 tests (needs Docker for the PostgreSQL ones)
 dotnet test FlowTrim.slnx --filter "Category!=Integration"   # fast tests only, no Docker
 ```
 
