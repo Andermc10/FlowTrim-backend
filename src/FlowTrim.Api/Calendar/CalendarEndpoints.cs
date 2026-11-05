@@ -7,9 +7,9 @@ public static class CalendarEndpoints
 {
     public static void MapCalendarEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/calendar").RequireAuthorization();
+        var group = app.MapGroup("/api/calendar").RequireAuthorization().ProducesProblem(StatusCodes.Status401Unauthorized);
 
-        group.MapGet("", GetAsync).WithName("GetCalendar");
+        group.MapGet("", GetAsync).WithName("GetCalendar").Produces<CalendarResponse>().ProducesValidationProblem();
     }
 
     // Días del mes con cobros esperados y lo registrado, más totales por moneda. 200 / 400 si el mes no es yyyy-MM.

@@ -10,12 +10,14 @@ public static class BudgetEndpoints
 {
     public static void MapBudgetEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/budgets").RequireAuthorization();
+        var group = app.MapGroup("/api/budgets").RequireAuthorization().ProducesProblem(StatusCodes.Status401Unauthorized);
 
-        group.MapGet("", ListAsync).WithName("ListBudgets");
-        group.MapPost("", CreateAsync).WithName("CreateBudget");
-        group.MapPut("/{id:guid}", UpdateAsync).WithName("UpdateBudget");
-        group.MapDelete("/{id:guid}", DeleteAsync).WithName("DeleteBudget");
+        group.MapGet("", ListAsync).WithName("ListBudgets").Produces<BudgetListResponse>().ProducesValidationProblem();
+        group.MapPost("", CreateAsync).WithName("CreateBudget")
+            .Produces<BudgetResponse>(StatusCodes.Status201Created).ProducesValidationProblem().ProducesProblem(StatusCodes.Status409Conflict);
+        group.MapPut("/{id:guid}", UpdateAsync).WithName("UpdateBudget")
+            .Produces<BudgetResponse>().ProducesValidationProblem().ProducesProblem(StatusCodes.Status404NotFound);
+        group.MapDelete("/{id:guid}", DeleteAsync).WithName("DeleteBudget").Produces(StatusCodes.Status204NoContent).ProducesProblem(StatusCodes.Status404NotFound);
     }
 
     // Avance de cada presupuesto en el mes (?month=yyyy-MM; por defecto, el actual). 200 / 400.

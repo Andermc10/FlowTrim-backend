@@ -10,13 +10,19 @@ public static class AccountEndpoints
 {
     public static void MapAccountEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/accounts").RequireAuthorization();
+        var group = app.MapGroup("/api/accounts").RequireAuthorization().ProducesProblem(StatusCodes.Status401Unauthorized);
 
-        group.MapGet("", ListAsync).WithName("ListAccounts");
-        group.MapGet("/{id:guid}", GetAsync).WithName("GetAccount");
-        group.MapPost("", CreateAsync).WithName("CreateAccount");
-        group.MapPut("/{id:guid}", UpdateAsync).WithName("UpdateAccount");
-        group.MapDelete("/{id:guid}", DeleteAsync).WithName("DeleteAccount");
+        group.MapGet("", ListAsync).WithName("ListAccounts").Produces<IReadOnlyList<AccountResponse>>();
+        group.MapGet("/{id:guid}", GetAsync).WithName("GetAccount")
+            .Produces<AccountResponse>().ProducesProblem(StatusCodes.Status404NotFound);
+        group.MapPost("", CreateAsync).WithName("CreateAccount")
+            .Produces<AccountResponse>(StatusCodes.Status201Created).ProducesValidationProblem();
+        group.MapPut("/{id:guid}", UpdateAsync).WithName("UpdateAccount")
+            .Produces<AccountResponse>().ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status404NotFound).ProducesProblem(StatusCodes.Status409Conflict);
+        group.MapDelete("/{id:guid}", DeleteAsync).WithName("DeleteAccount")
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status404NotFound).ProducesProblem(StatusCodes.Status409Conflict);
     }
 
     // Sin archivadas salvo ?includeArchived=true.

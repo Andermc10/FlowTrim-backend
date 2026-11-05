@@ -10,13 +10,14 @@ public static class TransactionEndpoints
 {
     public static void MapTransactionEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/transactions").RequireAuthorization();
+        var group = app.MapGroup("/api/transactions").RequireAuthorization().ProducesProblem(StatusCodes.Status401Unauthorized);
 
-        group.MapGet("", ListAsync).WithName("ListTransactions");
-        group.MapGet("/{id:guid}", GetAsync).WithName("GetTransaction");
-        group.MapPost("", CreateAsync).WithName("CreateTransaction");
-        group.MapPut("/{id:guid}", UpdateAsync).WithName("UpdateTransaction");
-        group.MapDelete("/{id:guid}", DeleteAsync).WithName("DeleteTransaction");
+        group.MapGet("", ListAsync).WithName("ListTransactions").Produces<TransactionListResponse>().ProducesValidationProblem();
+        group.MapGet("/{id:guid}", GetAsync).WithName("GetTransaction").Produces<TransactionResponse>().ProducesProblem(StatusCodes.Status404NotFound);
+        group.MapPost("", CreateAsync).WithName("CreateTransaction").Produces<TransactionResponse>(StatusCodes.Status201Created).ProducesValidationProblem();
+        group.MapPut("/{id:guid}", UpdateAsync).WithName("UpdateTransaction")
+            .Produces<TransactionResponse>().ProducesValidationProblem().ProducesProblem(StatusCodes.Status404NotFound);
+        group.MapDelete("/{id:guid}", DeleteAsync).WithName("DeleteTransaction").Produces(StatusCodes.Status204NoContent).ProducesProblem(StatusCodes.Status404NotFound);
     }
 
     // Filtros: from, to (inclusivas), accountId, categoryId, type, search; page/pageSize (50, máx. 200). Los totales por

@@ -8,7 +8,8 @@ public static class HealthEndpoints
 {
     public static void MapHealthEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/health", GetHealthAsync).WithName("GetHealth");
+        app.MapGet("/api/health", GetHealthAsync).WithName("GetHealth")
+            .Produces<HealthResponse>().Produces<HealthResponse>(StatusCodes.Status503ServiceUnavailable);
     }
 
     // 200 si todo está bien; 503 si la base de datos no responde.

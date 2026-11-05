@@ -7,9 +7,9 @@ public static class DashboardEndpoints
 {
     public static void MapDashboardEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/dashboard").RequireAuthorization();
+        var group = app.MapGroup("/api/dashboard").RequireAuthorization().ProducesProblem(StatusCodes.Status401Unauthorized);
 
-        group.MapGet("/today", GetTodayAsync).WithName("GetTodayDashboard");
+        group.MapGet("/today", GetTodayAsync).WithName("GetTodayDashboard").Produces<TodayDashboardResponse>();
     }
 
     // "Puedes gastar hoy" por moneda con todas sus entradas, cuentas, últimos movimientos y cobros hasta fin de mes. 200.
