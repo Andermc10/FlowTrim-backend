@@ -22,10 +22,13 @@ public static class SubscriptionImportEndpoints
             .RequireAuthorization()
             // La API se autentica con bearer token y nunca con cookies: no hay CSRF que mitigar con antiforgery.
             .DisableAntiforgery()
-            .WithMetadata(new RequestSizeLimitAttribute(MaxRequestBytes));
+            .WithMetadata(new RequestSizeLimitAttribute(MaxRequestBytes))
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status413PayloadTooLarge);
 
-        group.MapPost("/preview", PreviewAsync).WithName("PreviewSubscriptionImport");
-        group.MapPost("/confirm", ConfirmAsync).WithName("ConfirmSubscriptionImport");
+        group.MapPost("/preview", PreviewAsync).WithName("PreviewSubscriptionImport").Produces<SubscriptionImportPreview>();
+        group.MapPost("/confirm", ConfirmAsync).WithName("ConfirmSubscriptionImport").Produces<SubscriptionImportConfirmation>();
     }
 
     private static async Task<IResult> PreviewAsync(

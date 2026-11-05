@@ -1,4 +1,6 @@
+using FlowTrim.Application.Common;
 using FlowTrim.Application.Subscriptions;
+using FlowTrim.Application.Transactions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using FlowTrim.Application.Usage;
@@ -13,19 +15,24 @@ public static class SubscriptionEndpoints
 {
     public static void MapSubscriptionEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/subscriptions").RequireAuthorization();
+        var group = app.MapGroup("/api/subscriptions").RequireAuthorization().ProducesProblem(StatusCodes.Status401Unauthorized);
 
-        group.MapPost("", CreateAsync).WithName("CreateSubscription");
-        group.MapGet("", ListAsync).WithName("ListSubscriptions");
-        group.MapGet("/upcoming", GetUpcomingAsync).WithName("GetUpcomingCharges");
-        group.MapGet("/{id:guid}", GetAsync).WithName("GetSubscription");
-        group.MapPut("/{id:guid}", UpdateAsync).WithName("UpdateSubscription");
-        group.MapDelete("/{id:guid}", DeleteAsync).WithName("DeleteSubscription");
-        group.MapPost("/{id:guid}/mark-paid", MarkPaidAsync).WithName("MarkSubscriptionPaid");
-        group.MapGet("/{id:guid}/payments", ListPaymentsAsync).WithName("ListSubscriptionPayments");
-        group.MapPost("/{id:guid}/usage-records", RegisterUsageAsync).WithName("RegisterUsage");
-        group.MapGet("/{id:guid}/usage-records", ListUsageAsync).WithName("ListUsage");
-        group.MapGet("/{id:guid}/cost-per-use", GetCostPerUseAsync).WithName("GetCostPerUse");
+        group.MapPost("", CreateAsync).WithName("CreateSubscription").Produces<SubscriptionResponse>(StatusCodes.Status201Created).ProducesValidationProblem();
+        group.MapGet("", ListAsync).WithName("ListSubscriptions")
+            .Produces<PagedResponse<SubscriptionResponse>>().ProducesValidationProblem();
+        group.MapGet("/upcoming", GetUpcomingAsync).WithName("GetUpcomingCharges").Produces<UpcomingChargesResponse>();
+        group.MapGet("/{id:guid}", GetAsync).WithName("GetSubscription").Produces<SubscriptionResponse>().ProducesProblem(StatusCodes.Status404NotFound);
+        group.MapPut("/{id:guid}", UpdateAsync).WithName("UpdateSubscription")
+            .Produces<SubscriptionResponse>().ProducesValidationProblem().ProducesProblem(StatusCodes.Status404NotFound);
+        group.MapDelete("/{id:guid}", DeleteAsync).WithName("DeleteSubscription").Produces(StatusCodes.Status204NoContent).ProducesProblem(StatusCodes.Status404NotFound);
+        group.MapPost("/{id:guid}/mark-paid", MarkPaidAsync).WithName("MarkSubscriptionPaid")
+            .Produces<MarkPaidResponse>().ProducesValidationProblem().ProducesProblem(StatusCodes.Status404NotFound);
+        group.MapGet("/{id:guid}/payments", ListPaymentsAsync).WithName("ListSubscriptionPayments")
+            .Produces<IReadOnlyList<TransactionResponse>>().ProducesProblem(StatusCodes.Status404NotFound);
+        group.MapPost("/{id:guid}/usage-records", RegisterUsageAsync).WithName("RegisterUsage")
+            .Produces<UsageRecordResponse>(StatusCodes.Status201Created).ProducesValidationProblem().ProducesProblem(StatusCodes.Status404NotFound);
+        group.MapGet("/{id:guid}/usage-records", ListUsageAsync).WithName("ListUsage").Produces<IReadOnlyList<UsageRecordResponse>>().ProducesProblem(StatusCodes.Status404NotFound);
+        group.MapGet("/{id:guid}/cost-per-use", GetCostPerUseAsync).WithName("GetCostPerUse").Produces<CostPerUseResponse>().ProducesProblem(StatusCodes.Status404NotFound);
     }
 
     // 201 con el recurso creado, o 400 con errores por campo.

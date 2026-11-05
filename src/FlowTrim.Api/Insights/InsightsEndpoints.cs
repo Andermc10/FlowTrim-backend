@@ -62,7 +62,11 @@ public static class InsightsEndpoints
         app.MapPost("/api/insights/questions", AskAsync)
             .RequireAuthorization()
             .RequireRateLimiting(RateLimitPolicy)
-            .WithName("AskInsightsQuestion");
+            .WithName("AskInsightsQuestion")
+            .Produces<InsightsAnswerResponse>().ProducesValidationProblem().ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests)
+            .ProducesProblem(StatusCodes.Status502BadGateway)
+            .ProducesProblem(StatusCodes.Status504GatewayTimeout);
     }
 
     private static async Task<IResult> AskAsync(

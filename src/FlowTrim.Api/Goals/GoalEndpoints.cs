@@ -10,15 +10,18 @@ public static class GoalEndpoints
 {
     public static void MapGoalEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/goals").RequireAuthorization();
+        var group = app.MapGroup("/api/goals").RequireAuthorization().ProducesProblem(StatusCodes.Status401Unauthorized);
 
-        group.MapGet("", ListAsync).WithName("ListGoals");
-        group.MapPost("", CreateAsync).WithName("CreateGoal");
-        group.MapGet("/{id:guid}", GetAsync).WithName("GetGoal");
-        group.MapPut("/{id:guid}", UpdateAsync).WithName("UpdateGoal");
-        group.MapDelete("/{id:guid}", DeleteAsync).WithName("DeleteGoal");
-        group.MapPost("/{id:guid}/contributions", AddContributionAsync).WithName("AddGoalContribution");
-        group.MapDelete("/{id:guid}/contributions/{contributionId:guid}", DeleteContributionAsync).WithName("DeleteGoalContribution");
+        group.MapGet("", ListAsync).WithName("ListGoals").Produces<IReadOnlyList<GoalResponse>>();
+        group.MapPost("", CreateAsync).WithName("CreateGoal").Produces<GoalResponse>(StatusCodes.Status201Created).ProducesValidationProblem();
+        group.MapGet("/{id:guid}", GetAsync).WithName("GetGoal").Produces<GoalDetailResponse>().ProducesProblem(StatusCodes.Status404NotFound);
+        group.MapPut("/{id:guid}", UpdateAsync).WithName("UpdateGoal")
+            .Produces<GoalResponse>().ProducesValidationProblem().ProducesProblem(StatusCodes.Status404NotFound).ProducesProblem(StatusCodes.Status409Conflict);
+        group.MapDelete("/{id:guid}", DeleteAsync).WithName("DeleteGoal").Produces(StatusCodes.Status204NoContent).ProducesProblem(StatusCodes.Status404NotFound);
+        group.MapPost("/{id:guid}/contributions", AddContributionAsync).WithName("AddGoalContribution")
+            .Produces<ContributionResponse>(StatusCodes.Status201Created).ProducesValidationProblem().ProducesProblem(StatusCodes.Status404NotFound);
+        group.MapDelete("/{id:guid}/contributions/{contributionId:guid}", DeleteContributionAsync).WithName("DeleteGoalContribution")
+            .Produces(StatusCodes.Status204NoContent).ProducesProblem(StatusCodes.Status404NotFound).ProducesProblem(StatusCodes.Status409Conflict);
     }
 
     private static async Task<IResult> ListAsync(IListGoalsHandler handler, CancellationToken cancellationToken) =>

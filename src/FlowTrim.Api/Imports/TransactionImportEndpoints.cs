@@ -19,10 +19,13 @@ public static class TransactionImportEndpoints
             .RequireAuthorization()
             // La API se autentica con bearer token y nunca con cookies: no hay CSRF que mitigar con antiforgery.
             .DisableAntiforgery()
-            .WithMetadata(new RequestSizeLimitAttribute(SubscriptionImportEndpoints.MaxRequestBytes));
+            .WithMetadata(new RequestSizeLimitAttribute(SubscriptionImportEndpoints.MaxRequestBytes))
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status413PayloadTooLarge);
 
-        group.MapPost("/preview", PreviewAsync).WithName("PreviewTransactionImport");
-        group.MapPost("/confirm", ConfirmAsync).WithName("ConfirmTransactionImport");
+        group.MapPost("/preview", PreviewAsync).WithName("PreviewTransactionImport").Produces<TransactionImportPreview>();
+        group.MapPost("/confirm", ConfirmAsync).WithName("ConfirmTransactionImport").Produces<TransactionImportConfirmation>();
     }
 
     private static async Task<IResult> PreviewAsync(

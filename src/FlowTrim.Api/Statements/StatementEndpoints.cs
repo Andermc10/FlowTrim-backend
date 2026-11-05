@@ -7,9 +7,9 @@ public static class StatementEndpoints
 {
     public static void MapStatementEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/statements").RequireAuthorization();
+        var group = app.MapGroup("/api/statements").RequireAuthorization().ProducesProblem(StatusCodes.Status401Unauthorized);
 
-        group.MapGet("", GetAsync).WithName("GetStatement");
+        group.MapGet("", GetAsync).WithName("GetStatement").Produces<StatementResponse>().ProducesValidationProblem();
     }
 
     // Ingresos, gastos, neto, tasa de ahorro y categorías del mes contra el anterior. 200 / 400 si el mes no es yyyy-MM.

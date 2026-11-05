@@ -12,12 +12,13 @@ public static class CategoryEndpoints
 {
     public static void MapCategoryEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/categories").RequireAuthorization();
+        var group = app.MapGroup("/api/categories").RequireAuthorization().ProducesProblem(StatusCodes.Status401Unauthorized);
 
-        group.MapGet("", ListAsync).WithName("ListCategories");
-        group.MapPost("", CreateAsync).WithName("CreateCategory");
-        group.MapPut("/{id:guid}", UpdateAsync).WithName("UpdateCategory");
-        group.MapDelete("/{id:guid}", DeleteAsync).WithName("DeleteCategory");
+        group.MapGet("", ListAsync).WithName("ListCategories").Produces<IReadOnlyList<CategoryResponse>>().ProducesValidationProblem();
+        group.MapPost("", CreateAsync).WithName("CreateCategory").Produces<CategoryResponse>(StatusCodes.Status201Created).ProducesValidationProblem();
+        group.MapPut("/{id:guid}", UpdateAsync).WithName("UpdateCategory")
+            .Produces<CategoryResponse>().ProducesValidationProblem().ProducesProblem(StatusCodes.Status404NotFound).ProducesProblem(StatusCodes.Status409Conflict);
+        group.MapDelete("/{id:guid}", DeleteAsync).WithName("DeleteCategory").Produces(StatusCodes.Status204NoContent).ProducesProblem(StatusCodes.Status404NotFound).ProducesProblem(StatusCodes.Status409Conflict);
     }
 
     // ?kind=Expense|Income, ?includeArchived=true. La primera lista de un usuario sin categorías crea el set por

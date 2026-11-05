@@ -13,12 +13,13 @@ public static class SpendingEndpoints
 {
     public static void MapSpendingEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api").RequireAuthorization();
+        var group = app.MapGroup("/api").RequireAuthorization().ProducesProblem(StatusCodes.Status401Unauthorized);
 
-        group.MapGet("/summary", GetSummaryAsync).WithName("GetSummary");
-        group.MapPost("/simulations", SimulateAsync).WithName("Simulate");
-        group.MapGet("/analytics", GetAnalyticsAsync).WithName("GetAnalytics");
-        group.MapGet("/reports/subscriptions.csv", ExportCsvAsync).WithName("ExportSubscriptionsCsv");
+        group.MapGet("/summary", GetSummaryAsync).WithName("GetSummary").Produces<SummaryResponse>();
+        group.MapPost("/simulations", SimulateAsync).WithName("Simulate").Produces<SimulationResponse>().ProducesValidationProblem();
+        group.MapGet("/analytics", GetAnalyticsAsync).WithName("GetAnalytics").Produces<AnalyticsResponse>().ProducesValidationProblem();
+        group.MapGet("/reports/subscriptions.csv", ExportCsvAsync).WithName("ExportSubscriptionsCsv")
+            .Produces<string>(StatusCodes.Status200OK, "text/csv");
     }
 
     // Equivalente mensual y proyección anual por moneda de las suscripciones activas.
