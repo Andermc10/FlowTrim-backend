@@ -75,6 +75,11 @@ Migrations are never applied automatically: review the SQL, then run the command
 
 Every route except `/api/health` needs a bearer token (`401` without it, `403` if it has no `sub`).
 
+The OpenAPI 3.1 document (`/openapi/v1.json`, Development only) declares the request **and response** schema of every
+operation, its error responses (ProblemDetails) and the bearer scheme. It is the contract the
+[mobile app](https://github.com/Andermc10/FlowTrim-Mobile) generates its types from; `OpenApiContractTests` fail if an
+operation has no typed success response or if the declared Today schema drifts from the real response.
+
 | Area | Routes |
 |---|---|
 | Health | `GET /api/health` → `200` or `503`, no internals |
