@@ -10,6 +10,7 @@ using FlowTrim.Api.Health;
 using FlowTrim.Api.Imports;
 using FlowTrim.Api.Insights;
 using FlowTrim.Api.Observability;
+using FlowTrim.Api.OpenApi;
 using FlowTrim.Api.Spending;
 using FlowTrim.Api.Statements;
 using FlowTrim.Api.Subscriptions;
@@ -43,8 +44,13 @@ else
     });
 }
 
-// Documentación OpenAPI (solo se expone en desarrollo más abajo).
-builder.Services.AddOpenApi();
+// Documentación OpenAPI (solo se expone en desarrollo más abajo). El esquema Bearer documenta qué rutas exigen
+// token; los tipos de respuesta los declara cada endpoint con Produces (contrato para el cliente móvil, EP-17).
+builder.Services.AddOpenApi(options =>
+{
+    options.AddDocumentTransformer<BearerSecurityTransformer>();
+    options.AddOperationTransformer<BearerSecurityTransformer>();
+});
 
 // Authority y Audience se validan al arrancar (no al construir el host), para que herramientas como
 // `dotnet ef` sigan funcionando sin configuración de identidad.
