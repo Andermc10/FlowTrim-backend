@@ -1,0 +1,16 @@
+# Solo el código de src entra a la imagen. Nunca secretos ni artefactos locales.
+.env
+.env.*
+**/secrets.json
+**/appsettings.Development.json
+**/bin/
+**/obj/
+.git/
+.github/
+.vs/
+.vscode/
+.config/
+docs/
+tests/
+docker-compose.yml
+*.md

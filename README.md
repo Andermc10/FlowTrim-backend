@@ -128,6 +128,18 @@ Development uses `appsettings.Development.json` plus User Secrets; deployments u
 
 Outside Development the API enables HTTPS redirection and HSTS, writes JSON logs and keeps SQL text out of them.
 
+## Container and deployment
+
+The `Dockerfile` builds a two-stage image (SDK to publish, ASP.NET runtime to run) that starts as a non-root user on
+port `10000` in `Production`, with `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true` so HTTPS redirection and HSTS work behind a
+TLS-terminating proxy (the forwarded headers are ignored when that setting is off). `.dockerignore` keeps `.env`, local
+settings, tests and docs out of the image. CI builds the image on every pull request, starts it with dummy settings and
+checks that it runs as non-root, answers `GET /api/health` without details and protects private routes.
+
+The planned public demo (HU-40, not deployed yet) will run this image on a Render free web service with PostgreSQL on
+Neon; every setting above becomes a Render environment variable. Database migrations are applied explicitly by the operator, never at start-up. Steps,
+variable names and known limits are in the tracker runbook `docs/DEPLOYMENT.md`.
+
 ## Tests
 
 ```bash
@@ -146,6 +158,7 @@ CI (`.github/workflows/ci.yml`) runs the Release build and every test on each pu
 - Manual data only: no bank integration, no charge detection, no usage verification.
 - No currency conversion; every total is per currency.
 - Projections and savings assume constant prices and are never guaranteed.
-- No public deployment yet: the demo runs locally.
+- No public deployment yet (HU-40 in progress). On the planned free plans the API will sleep after 15 minutes without
+  traffic and the first request will take about a minute.
 
 Deferred items: [docs/TECH-DEBT.md](docs/TECH-DEBT.md) · v0.1.0 self-review: [docs/RELEASE-REVIEW.md](docs/RELEASE-REVIEW.md).

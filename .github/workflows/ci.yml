@@ -44,3 +44,43 @@ jobs:
 
       - name: Test
         run: dotnet test FlowTrim.slnx -c Release --no-build --logger "console;verbosity=normal"
+
+  # HU-40: la imagen que usa Render se construye y arranca en cada PR (sin secretos: configuración ficticia).
+  docker-image:
+    name: docker-image
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build --tag flowtrim-api:ci .
+
+      - name: Runs as a non-root user
+        run: test "$(docker run --rm --entrypoint id flowtrim-api:ci -u)" != "0"
+
+      - name: Starts and answers the health check
+        run: |
+          # Base de datos inexistente a proposito: la API debe arrancar y el health check responder 503 sin detalles.
+          docker run --detach --name api --publish 10000:10000 \
+            --env ConnectionStrings__FlowTrimDb="Host=127.0.0.1;Port=1;Database=none;Username=none;Password=none;Timeout=2" \
+            --env Authentication__Authority="https://issuer.example.test/" \
+            --env Authentication__Audience="https://api.flowtrim.dev" \
+            --env Cors__AllowedOrigins__0="https://app.flowtrim.test" \
+            flowtrim-api:ci
+          for attempt in $(seq 1 30); do
+            status=$(curl --silent --output /tmp/health.json --write-out '%{http_code}' http://localhost:10000/api/health || true)
+            if [ "$status" = "503" ] || [ "$status" = "200" ]; then break; fi
+            sleep 2
+          done
+          echo "health status: $status"
+          cat /tmp/health.json; echo
+          docker logs api | tail -20
+          test "$status" = "503"
+          # Sin trazas ni cadenas de conexion en la respuesta.
+          ! grep -qiE "exception|password|host=" /tmp/health.json
+
+      - name: Protected endpoint requires a token
+        run: test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://localhost:10000/api/accounts)" = "401"

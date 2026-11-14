@@ -28,6 +28,9 @@ public sealed class FlowTrimApiFactory : WebApplicationFactory<Program>
 
     public const string TestFrontendOrigin = "https://app.flowtrim.test";
 
+    /// <summary>Como ASPNETCORE_FORWARDEDHEADERS_ENABLED en Render (HU-40): confiar en X-Forwarded-* del proxy.</summary>
+    public bool ForwardedHeadersEnabled { get; init; }
+
     /// <summary>
     /// Cadena de conexión de un PostgreSQL real. Nula = repositorios y health check en memoria.
     /// </summary>
@@ -69,6 +72,10 @@ public sealed class FlowTrimApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("ConnectionStrings:FlowTrimDb", DatabaseConnectionString ?? "Host=localhost;Database=unused");
         builder.UseSetting("Authentication:Authority", Authority);
         builder.UseSetting("Authentication:Audience", "flowtrim-api-tests");
+        if (ForwardedHeadersEnabled)
+        {
+            builder.UseSetting("FORWARDEDHEADERS_ENABLED", "true");
+        }
         if (!string.IsNullOrEmpty(AllowedOrigin))
         {
             builder.UseSetting("Cors:AllowedOrigins:0", AllowedOrigin);
